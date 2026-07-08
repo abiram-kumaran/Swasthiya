@@ -123,7 +123,7 @@ export default function LoginScreen() {
           <View style={styles.logoBox}>
             <Ionicons name="shield-checkmark" size={36} color="#fff" />
           </View>
-          <Text style={styles.appName}>CareGrid AI</Text>
+          <Text style={styles.appName}>Swasthiya Setu</Text>
           <Text style={styles.appTagline}>National Health Mission{'\n'}District Healthcare Operations Platform</Text>
           <View style={styles.techRow}>
             {['Gemini AI','Google Maps','Firebase','Offline-First'].map(t => (

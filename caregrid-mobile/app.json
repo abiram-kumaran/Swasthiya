@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "CareGrid AI",
-    "slug": "caregrid-ai",
+    "name": "Swasthiya Setu",
+    "slug": "swasthiya-setu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,11 +13,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "in.gov.nhm.caregrid",
+      "bundleIdentifier": "in.gov.nhm.swasthiyasetu",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "CareGrid needs location to find nearby health centres.",
-        "NSMicrophoneUsageDescription": "CareGrid uses microphone for voice symptom input.",
-        "NSCameraUsageDescription": "CareGrid uses camera for medicine barcode scanning."
+        "NSLocationWhenInUseUsageDescription": "Swasthiya Setu needs location to find nearby health centres.",
+        "NSMicrophoneUsageDescription": "Swasthiya Setu uses microphone for voice symptom input.",
+        "NSCameraUsageDescription": "Swasthiya Setu uses camera for medicine barcode scanning."
       }
     },
     "android": {
@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0B6CBB"
       },
-      "package": "in.gov.nhm.caregrid",
+      "package": "in.gov.nhm.swasthiyasetu",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
@@ -37,10 +37,10 @@
       "expo-router",
       "expo-location"
     ],
-    "scheme": "caregrid",
+    "scheme": "swasthiyasetu",
     "extra": {
       "router": { "origin": false },
-      "eas": { "projectId": "caregrid-ai" }
+      "eas": { "projectId": "swasthiya-setu" }
     }
   }
 }

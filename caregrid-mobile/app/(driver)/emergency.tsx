@@ -10,7 +10,7 @@ export default function DriverEmergency() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Emergency Response</Text>
-        <Text style={styles.headerSub}>Ambulance · CareGrid Network</Text>
+        <Text style={styles.headerSub}>Ambulance · Swasthiya Setu Network</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ padding:16 }} showsVerticalScrollIndicator={false}>

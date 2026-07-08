@@ -161,7 +161,7 @@ export default function DriverDispatch() {
       <View style={styles.header}>
         <View style={{ flex:1 }}>
           <Text style={styles.headerTitle}>Dispatch</Text>
-          <Text style={styles.headerSub}>Driver: Ravi Kumar · CareGrid Network</Text>
+          <Text style={styles.headerSub}>Driver: Ravi Kumar · Swasthiya Setu Network</Text>
         </View>
         <View style={styles.onlineBadge}>
           <View style={styles.onlineDot} />

@@ -23,7 +23,7 @@ function getAIResponse(input: string): Omit<Message,'id'> {
 }
 
 const CHIPS = ['Fever','Headache','Cough','Chest Pain','Dengue','Emergency'];
-const WELCOME: Message = { id:'welcome', role:'ai', text:"Hello! I'm your CareGrid AI Health Assistant 🏥\n\nDescribe your symptoms in Hindi, Tamil, or English. I'll help you find the right care and give first aid guidance." };
+const WELCOME: Message = { id:'welcome', role:'ai', text:"Hello! I'm your Swasthiya Setu Health Assistant 🏥\n\nDescribe your symptoms in Hindi, Tamil, or English. I'll help you find the right care and give first aid guidance." };
 
 function Bubble({ msg }: { msg: Message }) {
   const [tipsOpen, setTipsOpen] = useState(false);
@@ -142,7 +142,7 @@ export default function PatientChat() {
             <View style={styles.onlineDot} />
           </View>
           <View style={{ flex:1 }}>
-            <Text style={styles.headerTitle}>CareGrid AI Assistant</Text>
+            <Text style={styles.headerTitle}>Swasthiya Setu Assistant</Text>
             <View style={{ flexDirection:'row', gap:6, marginTop:3 }}>
               <View style={styles.geminiBadge}><Text style={styles.geminiText}>Gemini-powered</Text></View>
               <View style={styles.offlineBadge}><Ionicons name="wifi" size={10} color={COLORS.green} /><Text style={styles.offlineText}> Works offline</Text></View>

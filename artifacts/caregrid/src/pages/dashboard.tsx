@@ -428,7 +428,7 @@ export default function Dashboard() {
               <h1 className="text-base font-extrabold text-gray-900 leading-tight tracking-tight">
                 District Command Dashboard
               </h1>
-              <p className="text-[11px] text-gray-400 font-medium">CareGrid AI · District Operations Engine</p>
+              <p className="text-[11px] text-gray-400 font-medium">Swasthiya Setu · District Operations Engine</p>
             </div>
           </div>
           <div className="flex items-center gap-3">

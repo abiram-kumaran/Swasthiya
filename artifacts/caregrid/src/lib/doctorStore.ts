@@ -43,7 +43,7 @@ interface DoctorState {
   labCount: number;
 }
 
-const KEY = 'caregrid_doctor_v1';
+const KEY = 'swasthiyasetu_doctor_v1';
 type L = () => void;
 const ls = new Set<L>();
 

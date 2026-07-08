@@ -25,7 +25,7 @@ export interface PatientProfile {
   registeredAt: string;
 }
 
-const STORAGE_KEY = 'caregrid_patient_v1';
+const STORAGE_KEY = 'swasthiyasetu_patient_v1';
 
 export function getPatient(): PatientProfile | null {
   try {

@@ -157,7 +157,7 @@ function getAiResponse(
       : '';
     return {
       role: 'ai',
-      text: `Hello, **${name}**! 👋 I'm your CareGrid AI health assistant.${conditions}\n\nHow are you feeling today? You can describe your symptoms or ask any health question.`,
+      text: `Hello, **${name}**! 👋 I'm your Swasthiya Setu health assistant.${conditions}\n\nHow are you feeling today? You can describe your symptoms or ask any health question.`,
       chips: ['I have fever', 'Headache', 'Stomach pain', 'Book appointment'],
     };
   }
@@ -289,7 +289,7 @@ export default function PatientChat() {
     const greeting: Message = {
       id: 'welcome',
       role: 'ai',
-      text: `Hello, **${name}**! 👋 I'm CareGrid AI, your personal health assistant.\n\nDescribe your symptoms and I'll help you find the best care — or ask me anything about your health.`,
+      text: `Hello, **${name}**! 👋 I'm Swasthiya Setu, your personal health assistant.\n\nDescribe your symptoms and I'll help you find the best care — or ask me anything about your health.`,
       chips: DEFAULT_CHIPS,
     };
     setMessages([greeting]);
@@ -330,7 +330,7 @@ export default function PatientChat() {
           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-gray-900 text-sm">CareGrid AI</p>
+          <p className="font-bold text-gray-900 text-sm">Swasthiya Setu</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />

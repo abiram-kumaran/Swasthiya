@@ -238,7 +238,7 @@ export default function Dispatch() {
             </div>
             <div>
               <h1 className="text-xl font-black text-white tracking-tight">Logistics Driver</h1>
-              <p className="text-xs text-gray-400 font-medium">CareGrid Critical Network</p>
+              <p className="text-xs text-gray-400 font-medium">Swasthiya Setu Critical Network</p>
             </div>
           </div>
           <div className="flex flex-col items-end gap-1">
@@ -316,7 +316,7 @@ export default function Dispatch() {
       <div className="text-center pt-6 pb-2">
         <div className="flex items-center justify-center gap-1.5 text-gray-600">
           <Shield className="w-3 h-3" />
-          <span className="text-[10px] font-semibold">CareGrid AI · Secure Dispatch Network</span>
+          <span className="text-[10px] font-semibold">Swasthiya Setu · Secure Dispatch Network</span>
         </div>
       </div>
     </div>

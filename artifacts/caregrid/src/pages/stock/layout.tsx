@@ -61,7 +61,7 @@ export default function StockLayout() {
         accentLight="emerald"
         icon={<Package className="w-7 h-7 text-white" />}
         title="Stock Handler Portal"
-        subtitle="CareGrid AI · Medicine Inventory Management"
+        subtitle="Swasthiya Setu · Medicine Inventory Management"
       />
     );
   }

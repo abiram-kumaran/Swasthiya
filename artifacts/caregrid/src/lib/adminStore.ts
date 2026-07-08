@@ -15,7 +15,7 @@ export interface AdminSession {
   sessionToken: string;
 }
 
-const STORAGE_KEY = 'caregrid_admin_session_v1';
+const STORAGE_KEY = 'swasthiyasetu_admin_session_v1';
 
 // pub-sub
 type Listener = () => void;

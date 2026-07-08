@@ -61,7 +61,7 @@ interface Props {
   subtitle: string;
 }
 
-const SESS_KEY: Record<StaffRole, string> = { staff: 'caregrid_staff_sess', stock: 'caregrid_stock_sess' };
+const SESS_KEY: Record<StaffRole, string> = { staff: 'swasthiyasetu_staff_sess', stock: 'swasthiyasetu_stock_sess' };
 
 export default function StaffLogin({ role, accentColor, icon, title, subtitle }: Props) {
   const [mode, setMode]   = useState<Mode>('choose');

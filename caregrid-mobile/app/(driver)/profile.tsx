@@ -9,7 +9,7 @@ export default function DriverProfile() {
       <View style={styles.header}>
         <View style={styles.avatar}><Text style={styles.avatarText}>RK</Text></View>
         <Text style={styles.name}>Ravi Kumar</Text>
-        <Text style={styles.role}>Logistics Driver · CareGrid Network</Text>
+        <Text style={styles.role}>Logistics Driver · Swasthiya Setu Network</Text>
         <Text style={styles.id}>Driver ID: DRV-2024-0042</Text>
       </View>
 

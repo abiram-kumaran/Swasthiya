@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.caregrid.app',
-  appName: 'caregrid',
+  appId: 'com.swasthiyasetu.app',
+  appName: 'swasthiyasetu',
   webDir: 'dist/public'
 };
 

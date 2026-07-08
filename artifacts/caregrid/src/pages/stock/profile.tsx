@@ -5,7 +5,7 @@ export default function StockProfile() {
     name: 'Kumar Selvam',
     role: 'Stock Handler',
     empId: 'CG-PHC01-SH02',
-    email: 'kumar.selvam@caregrid.gov.in',
+    email: 'kumar.selvam@swasthiyasetu.gov.in',
     phone: '+91 94567 89012',
     facility: 'Peelamedu Urban PHC',
     district: 'Coimbatore District',

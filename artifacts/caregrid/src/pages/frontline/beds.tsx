@@ -16,8 +16,8 @@ interface BedWard {
   notes: string;
 }
 
-const STORAGE_KEY = 'caregrid_beds_v1';
-const PENDING_KEY = 'caregrid_beds_pending_v1';
+const STORAGE_KEY = 'swasthiyasetu_beds_v1';
+const PENDING_KEY = 'swasthiyasetu_beds_pending_v1';
 
 const DEFAULT_WARDS: BedWard[] = [
   { id: 'general',   name: 'General Ward',    total: 0, occupied: 0, lastUpdated: new Date().toISOString(), notes: '' },

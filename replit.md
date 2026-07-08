@@ -1,11 +1,11 @@
-# CareGrid AI
+# Swasthiya Setu
 
 A district healthcare operations engine — an AI-powered, full-stack web app for managing Primary Health Centres (PHCs) and Community Health Centres (CHCs). Built as a Google Hackathon prototype.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080, proxied at /api)
-- `pnpm --filter @workspace/caregrid run dev` — run the frontend (proxied at /)
+- `pnpm --filter @workspace/swasthiyasetu run dev` — run the frontend (proxied at /)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
@@ -24,7 +24,7 @@ A district healthcare operations engine — an AI-powered, full-stack web app fo
 - `lib/api-spec/openapi.yaml` — single source of truth for all API contracts
 - `lib/db/src/schema/` — Drizzle table definitions (centers, inventory, logs, attendance, dispatch, chat)
 - `artifacts/api-server/src/routes/` — Express route handlers
-- `artifacts/caregrid/src/pages/` — four main views (dashboard, frontline, patient, dispatch)
+- `artifacts/swasthiyasetu/src/pages/` — four main views (dashboard, frontline, patient, dispatch)
 
 ## Four Views
 

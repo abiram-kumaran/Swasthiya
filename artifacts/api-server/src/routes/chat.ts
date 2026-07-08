@@ -89,7 +89,7 @@ function generateBotReply(
 
   return {
     reply:
-      "Hello! I am CareGrid's health assistant. Ask me about: wait times ('Check crowd at PHC-Alpha'), symptoms ('I have fever'), or medicine availability ('Is Paracetamol available?'). How can I help?",
+      "Hello! I am Swasthiya Setu's health assistant. Ask me about: wait times ('Check crowd at PHC-Alpha'), symptoms ('I have fever'), or medicine availability ('Is Paracetamol available?'). How can I help?",
     isAlert: false,
   };
 }

@@ -439,7 +439,7 @@ export default function Frontline() {
             <div>
               <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest">PHC ALPHA · FRONTLINE</p>
               <h1 className="text-2xl font-black tracking-tight">Staff Portal</h1>
-              <p className="text-white/70 text-xs mt-0.5">CareGrid AI · Offline-first PWA</p>
+              <p className="text-white/70 text-xs mt-0.5">Swasthiya Setu · Offline-first PWA</p>
             </div>
           </div>
         </div>

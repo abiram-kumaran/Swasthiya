@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────
-   CareGrid AI — Central Mock Data Store
+   Swasthiya Setu — Central Mock Data Store
    All 4 portals share this data layer.
 ───────────────────────────────────────────────────────── */
 

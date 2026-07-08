@@ -48,7 +48,7 @@ export const STAFF_REGISTRY: StaffRecord[] = [
 ];
 
 /* ── Aadhaar-verified tracking (one per device per empId) ── */
-const AADHAAR_KEY = 'caregrid_aadhaar_verified_v1';
+const AADHAAR_KEY = 'swasthiyasetu_aadhaar_verified_v1';
 
 function loadVerified(): Set<string> {
   try {
@@ -66,7 +66,7 @@ let _verified = loadVerified();
 /* ── Pub-sub ─────────────────────────────────────────────── */
 type L = () => void;
 const listeners: Record<StaffRole, Set<L>> = { staff: new Set(), stock: new Set() };
-const KEYS: Record<StaffRole, string> = { staff: 'caregrid_staff_v1', stock: 'caregrid_stock_auth_v1' };
+const KEYS: Record<StaffRole, string> = { staff: 'swasthiyasetu_staff_v1', stock: 'swasthiyasetu_stock_auth_v1' };
 
 function load(role: StaffRole): StaffSession | null {
   try { const s = localStorage.getItem(KEYS[role]); return s ? JSON.parse(s) : null; } catch { return null; }

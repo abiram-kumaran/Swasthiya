@@ -20,7 +20,7 @@ const NAV_TABS = [
 function FrontlineProfile() {
   const staffData = {
     name: 'Nurse Vijaya Lakshmi', role: 'Senior Nurse Practitioner',
-    empId: 'CG-PHC01-N04', email: 'vijaya.lakshmi@caregrid.gov.in',
+    empId: 'CG-PHC01-N04', email: 'vijaya.lakshmi@swasthiyasetu.gov.in',
     phone: '+91 98765 43210', facility: 'Peelamedu Urban PHC',
     department: 'Outpatient & Emergency Triage', shift: '09:00 AM - 05:00 PM',
     checkedInAt: '08:52 AM', rnId: 'RN-78324-IN', cprExpiry: 'Dec 2027',
@@ -121,7 +121,7 @@ export default function FrontlineLayout() {
         accentLight="blue"
         icon={<Users className="w-7 h-7 text-white" />}
         title="Clinic Staff Portal"
-        subtitle="CareGrid AI · Patient Queue & Bed Management"
+        subtitle="Swasthiya Setu · Patient Queue & Bed Management"
       />
     );
   }

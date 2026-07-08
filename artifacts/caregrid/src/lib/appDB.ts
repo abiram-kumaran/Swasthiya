@@ -1,5 +1,5 @@
 /**
- * CareGrid AppDB — Single shared reactive database.
+ * Swasthiya Setu AppDB — Single shared reactive database.
  * All portals read and write here. Persisted in localStorage.
  * On a real deployment this would be a backend API (Postgres via Drizzle).
  *
@@ -130,7 +130,7 @@ const EMPTY_STATS: DistrictStats = {
   lastUpdated: new Date().toISOString(),
 };
 
-const DB_KEY = 'caregrid_appdb_v1';
+const DB_KEY = 'swasthiyasetu_appdb_v1';
 
 function loadState(): AppState {
   try {

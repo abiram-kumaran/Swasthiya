@@ -54,7 +54,7 @@ const T: Record<string, Record<string, string>> = {
   emergencySos:    { en: 'Emergency SOS', hi: 'आपातकालीन एसओएस', ta: 'அவசர உதவி (SOS)' },
   sosSent:         { en: '🚨 SOS sent! Help is on the way.', hi: '🚨 एसओएस भेजा गया! मदद आ रही है।', ta: '🚨 அவசர உதவி கோரப்பட்டது! உதவி விரைவில் வரும்.' },
   healthAdvisories:{ en: 'Health Advisories', hi: 'स्वास्थ्य सलाह', ta: 'சுகாதார ஆலோசனைகள்' },
-  chatGreeting:    { en: "Hello! I'm CareGrid AI, your personal health assistant. Describe your symptoms and I'll help you find the best care. 🏥", hi: "नमस्ते! मैं CareGrid AI हूं, आपका व्यक्तिगत स्वास्थ्य सहायक। अपने लक्षण बताएं। 🏥", ta: "வணக்கம்! நான் CareGrid AI, உங்கள் தனிப்பட்ட சுகாதார உதவியாளர். உங்கள் அறிகுறிகளை விவரிக்கவும். 🏥" },
+  chatGreeting:    { en: "Hello! I'm Swasthiya Setu, your personal health assistant. Describe your symptoms and I'll help you find the best care. 🏥", hi: "नमस्ते! मैं Swasthiya Setu हूं, आपका व्यक्तिगत स्वास्थ्य सहायक। अपने लक्षण बताएं। 🏥", ta: "வணக்கம்! நான் Swasthiya Setu, உங்கள் தனிப்பட்ட சுகாதார உதவியாளர். உங்கள் அறிகுறிகளை விவரிக்கவும். 🏥" },
   chatPlaceholder: { en: 'Ask me anything about your health…', hi: 'अपने स्वास्थ्य के बारे में कुछ भी पूछें…', ta: 'உங்கள் உடல்நலம் பற்றி எதையும் கேளுங்கள்…' },
   geminiPowered:   { en: 'Gemini-powered', hi: 'जेमिनी द्वारा संचालित', ta: 'ஜெமினி ஆதரவுடையது' },
   worksOffline:    { en: 'Works offline', hi: 'ऑफलाइन काम करता है', ta: 'ஆஃப்லைனில் செயல்படும்' },
@@ -92,18 +92,18 @@ function getLangCode(lang: string): string {
 
 export function useTranslation() {
   const [lang, setLangState] = useState<string>(() => {
-    return localStorage.getItem('caregrid_lang') ?? 'English';
+    return localStorage.getItem('swasthiyasetu_lang') ?? 'English';
   });
 
   const changeLanguage = (newLang: string) => {
     setLangState(newLang);
-    localStorage.setItem('caregrid_lang', newLang);
+    localStorage.setItem('swasthiyasetu_lang', newLang);
     window.dispatchEvent(new CustomEvent('langChanged', { detail: newLang }));
   };
 
   useEffect(() => {
     const handle = (e: Event) => {
-      const v = (e as CustomEvent<string>).detail ?? localStorage.getItem('caregrid_lang');
+      const v = (e as CustomEvent<string>).detail ?? localStorage.getItem('swasthiyasetu_lang');
       if (v) setLangState(v);
     };
     window.addEventListener('langChanged', handle);

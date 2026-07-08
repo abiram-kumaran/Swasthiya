@@ -115,7 +115,7 @@ function AdminLogin() {
             <Shield className="w-6 h-6 text-blue-400" />
           </div>
           <div>
-            <p className="text-white font-black text-base tracking-tight">CareGrid AI</p>
+            <p className="text-white font-black text-base tracking-tight">Swasthiya Setu</p>
             <p className="text-blue-300 text-[11px]">District Command Center</p>
           </div>
         </div>

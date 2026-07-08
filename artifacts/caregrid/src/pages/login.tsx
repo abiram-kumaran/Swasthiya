@@ -439,7 +439,7 @@ export default function Login() {
         <div className="w-16 h-16 bg-white/15 rounded-2xl flex items-center justify-center border border-white/25 mb-4 shadow-lg backdrop-blur-sm">
           <Shield className="w-8 h-8 text-white" />
         </div>
-        <h1 className="text-white text-2xl font-black tracking-tight mb-1">CareGrid AI</h1>
+        <h1 className="text-white text-2xl font-black tracking-tight mb-1">Swasthiya Setu</h1>
         <p className="text-blue-200 text-xs text-center max-w-xs">National Health Mission · District Healthcare Operations Platform</p>
         <div className="flex items-center gap-2 mt-3 flex-wrap justify-center">
           {['Gemini AI','Google Maps','Firebase','Offline-First'].map(t => (

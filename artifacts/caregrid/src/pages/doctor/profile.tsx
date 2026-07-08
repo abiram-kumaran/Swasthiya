@@ -10,7 +10,7 @@ export default function DoctorProfile() {
     role: 'Medical Officer (MBBS)',
     regId: 'TN-MC-34521',
     empId: 'CG-PHC01-MO01',
-    email: 'arumugam.r@caregrid.gov.in',
+    email: 'arumugam.r@swasthiyasetu.gov.in',
     phone: '+91 98012 34567',
     facility: 'Peelamedu Urban PHC',
     district: 'Coimbatore District',

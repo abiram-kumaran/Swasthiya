@@ -55,7 +55,7 @@ function DoctorLogin() {
       setLoading(false);
       const result = doctorActions.validateNMC(nmc.trim());
       if (result === 'not_found') {
-        setError(`NMC Number ${nmc.toUpperCase()} is not registered in this PHC's CareGrid system.`);
+        setError(`NMC Number ${nmc.toUpperCase()} is not registered in this PHC's Swasthiya Setu system.`);
         setStep('error');
       } else {
         const created = doctorActions.createSession(nmc.trim());
@@ -102,7 +102,7 @@ function DoctorLogin() {
           <Stethoscope className="w-7 h-7 text-cyan-300" />
         </div>
         <h1 className="text-white font-black text-xl tracking-tight">Doctor Portal</h1>
-        <p className="text-cyan-300 text-xs mt-1">CareGrid AI · Clinical Workspace</p>
+        <p className="text-cyan-300 text-xs mt-1">Swasthiya Setu · Clinical Workspace</p>
         <div className="flex items-center gap-2 mt-2">
           {['NMC Verified','Device Bound','WebAuthn'].map(b => (
             <span key={b} className="text-[9px] text-cyan-400 bg-cyan-900/40 border border-cyan-500/20 px-2 py-0.5 rounded-full">{b}</span>

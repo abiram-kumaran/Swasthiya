@@ -142,7 +142,7 @@ export default function Patient() {
         </div>
 
         <div className="flex-1">
-          <h1 className="font-bold text-[15px] leading-tight">CareGrid Health Bot</h1>
+          <h1 className="font-bold text-[15px] leading-tight">Swasthiya Setu Health Bot</h1>
           <p className="text-[11px] text-white/70">Govt. of India · Verified ✓</p>
         </div>
 
@@ -176,7 +176,7 @@ export default function Patient() {
       >
         {/* Encryption notice */}
         <div className="bg-[#FFF9C4] text-[#4A4000] text-[11px] text-center rounded-lg px-4 py-2 mx-auto max-w-[85%] shadow-sm mb-2">
-          🔒 End-to-end encrypted · CareGrid uses this strictly for medical routing
+          🔒 End-to-end encrypted · Swasthiya Setu uses this strictly for medical routing
         </div>
 
         {/* Welcome if empty */}
@@ -185,7 +185,7 @@ export default function Patient() {
             <div className="w-16 h-16 rounded-full bg-[#075E54] flex items-center justify-center mx-auto mb-3">
               <span className="text-white text-2xl font-black">CG</span>
             </div>
-            <p className="text-gray-600 text-sm font-medium">CareGrid Health Assistant</p>
+            <p className="text-gray-600 text-sm font-medium">Swasthiya Setu Health Assistant</p>
             <p className="text-gray-400 text-xs mt-1">Ask about wait times, symptoms, or medicine availability</p>
           </div>
         )}
