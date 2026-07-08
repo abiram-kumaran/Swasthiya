@@ -1,0 +1,139 @@
+SYSTEM INSTRUCTION
+
+Act as an Expert Full-Stack Next.js, Firebase, and Google Cloud Developer. Your task is to build an award-winning prototype for a Google Hackathon.
+
+PROJECT OVERVIEW
+
+Project Name: CareGrid AI (District Healthcare Operations Engine)
+The Problem: Primary Health Centres (PHCs) and Community Health Centres (CHCs) face massive operational gaps—medicine stock-outs, unmanaged patient footfall, and unpredictable doctor attendance tracked manually.
+The Solution: A unified, offline-first web application that uses Google's AI ecosystem (Gemini, Vertex AI) to track resources, predict surges, load-balance patients, and automatically re-route medical supplies across a district.
+
+TECH STACK (MANDATORY)
+
+Frontend: Next.js (React), Tailwind CSS, Framer Motion (for smooth demo animations).
+
+Backend/DB: Firebase (Firestore) with Offline Persistence Enabled.
+
+AI/ML: Google Gemini 1.5 Pro API (for text/voice reasoning, predictive forecasting, and triage), Google Cloud Vision API (for OCR medicine scanning).
+
+Mapping: Google Maps JavaScript API (for plotting) & Google Maps Directions API (for driver routing).
+
+Inclusivity & Reach: Web Speech API (for multilingual voice-to-text input), Twilio / WhatsApp Business API (for zero-UI public access).
+
+CORE ARCHITECTURE & USER INTERFACES
+
+You must generate FOUR distinct views/interfaces to prove this is a complete ecosystem:
+
+View 1: The Frontline Staff Portal (Mobile-First PWA)
+
+Target User: Low-literacy/overworked rural clinic nurses.
+Design Rule: High contrast, massive buttons, minimal typing. Must work fully offline.
+Features to Build:
+
+Zero-Type Inventory: A camera button that simulates taking a photo of a medicine strip, using OCR to extract the name and update the stock count.
+
+Multilingual Voice Logs: A prominent microphone button. Staff can tap and say (in Hindi/English), "We had 40 patients today and we are out of Paracetamol." The app must parse this using an LLM to update the footfall and stock databases automatically.
+
+One-Tap Attendance: A simple biometric/tap-in button for doctors to log their presence with a GPS timestamp to prevent absenteeism.
+
+View 2: The District Command Dashboard (Desktop View)
+
+Target User: District Medical Officer / Government Admin.
+Design Rule: Data-dense but actionable. No raw data tables; only insights and maps.
+Features to Build:
+
+The Live District Map: Embed a Google Map showing pins for all local PHCs and CHCs. Green = Healthy, Red = Critical Shortage/Overcrowded.
+
+AI Epidemic Radar (The Predictor): A widget that simulates pulling data from the IMD Weather API. Show a notification: "Warning: 40°C Heatwave detected. Predicting 30% surge in dehydration cases at PHC-North."
+
+Smart Resource Redistribution (The Resolver): When a clinic runs out of stock, show an AI-generated actionable card: "CHC-West has surplus Amoxicillin. Click 'Approve' to dispatch 200 units to PHC-East." Clicking approve triggers the Logistics Driver App (View 4).
+
+View 3: The Public Patient Interface (Zero-UI / WhatsApp Bot)
+
+Target User: Rural citizens and patients.
+Design Rule: No app download required. Must run purely through a simulated WhatsApp/SMS conversational UI.
+Features to Build:
+
+Dynamic Wait-Time Check: A simulated chat interface where a user texts "Check crowd at PHC-Alpha." The bot checks Firestore and replies: "PHC-Alpha has a 2.5-hour wait. Beds are full. We recommend CHC-West (10 mins away, 15-min wait)."
+
+Smart AI Triage: The user sends a voice note of their symptoms. Gemini assesses the urgency. If critical (e.g., chest pain), it bypasses the queue and sends a red-alert to View 1 (Frontline Portal).
+
+View 4: Logistics & Dispatch App (Uber-Style Mobile View)
+
+Target User: Ambulance drivers and supply chain truck operators.
+Design Rule: High contrast, distraction-free map view for driving.
+Features to Build:
+
+Automated Transit Routing: When the Admin (View 2) approves a stock redistribution, this screen receives a push notification. It uses the Directions API to plot the fastest route to pick up surplus stock from Clinic A and deliver it to Clinic B.
+
+One-Tap Execution: Massive "Confirm Pickup" and "Confirm Drop-off" buttons that instantly update the central Firestore inventory once the transit is complete.
+
+UI/UX & APPLICATION INTERFACE DESIGN (MANDATORY)
+
+The application must look like a premium, production-ready Google Cloud product.
+
+1. Color Palette & Typography
+
+Primary/Brand: Google Cloud Blue (#1a73e8 to #174ea6).
+
+Backgrounds: Crisp whites and light grays (#f8f9fa) for high readability. (Use a Dark Mode theme #121212 for the Logistics Driver App to reduce glare).
+
+Alerts/Status: Critical Red (#d93025), Warning Yellow (#f9ab00), Success Green (#1e8e3e).
+
+Typography: 'Inter' or 'Roboto' font.
+
+2. Frontline Portal & Driver App (Mobile Views)
+
+Layout Structure: Single-column, mobile-first design. Use sticky bottom navigation bars.
+
+Touch Targets: All buttons (Camera OCR, Microphone, Dispatch Confirm) must be massive (min 48x48px) and easy to tap with a thumb.
+
+Visual Feedback: Provide bold visual confirmation overlays (e.g., a massive green checkmark toast) when stock is successfully updated or delivered, even in offline mode.
+
+3. Desktop Dashboard Interface (Command Center)
+
+Layout Structure: A sleek 3-pane layout.
+
+Left Sidebar: Sleek icon-based navigation (Map View, Inventory, Staffing, Alerts).
+
+Center Stage (70% width): The interactive Google Map taking up the majority of the screen, topped by a row of 4 KPI summary cards (Total Beds, Active Staff, Critical Shortages, Pending AI Actions).
+
+Right Panel (30% width): The "AI Action Feed." A dedicated sidebar displaying a scrolling list of Epidemic Radar warnings and Smart Redistribution approval cards.
+
+4. Animations & Micro-interactions (Framer Motion)
+
+Map pins for clinics in "Critical Shortage" must have a subtle, continuous red pulsing animation to draw the admin's eye immediately.
+
+When the admin clicks 'Approve' on a Smart Redistribution card, animate the card sliding off-screen with a green flash, and instantly animate a routing path drawing itself on the Google Map between the two clinics.
+
+DATABASE SCHEMA (FIRESTORE)
+
+Use this flat NoSQL structure for rapid querying:
+
+/centers: { id, name, type (PHC/CHC), coordinates, bedCapacity, activeBeds }
+
+/inventory: { centerId, medicineId, name, quantity, dailyBurnRate }
+
+/logs_daily: { centerId, date, patientFootfall, doctorsPresent, AI_anomaly_flag (boolean) }
+
+/dispatch_routes: { routeId, driverId, fromCenter, toCenter, payload (items), status (pending/in-transit/completed) }
+
+DEMO / MOCK DATA REQUIREMENTS
+
+Since this is for a hackathon demo, seed the application with 4 simulated centers (3 PHCs, 1 CHC).
+Set the initial data state to simulate a crisis:
+
+PHC-Alpha: Overcrowded (Footfall > Capacity), 0 beds available, Paracetamol stock critical (5 units left).
+
+CHC-Central: Surplus stock of Paracetamol (5,000 units), low footfall.
+This specific state will allow us to demo the Patient Re-routing (View 3) and the AI Smart Redistribution (View 2 & View 4) instantly.
+
+EXECUTION INSTRUCTIONS
+
+Start by initializing the Next.js layout and setting up the Firebase config with persistentLocalCache enabled.
+
+Build the Frontline Mobile Portal (View 1) and the simulated WhatsApp Chatbot interface (View 3) to prove citizen accessibility.
+
+Build the Command Dashboard map (View 2) and the Driver Dispatch screen (View 4).
+
+Ensure the UI is polished, professional, and incorporates the Framer Motion micro-interactions to guarantee the "Wow" factor during the demo.

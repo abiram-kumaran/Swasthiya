@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "CareGrid AI",
+    "slug": "caregrid-ai",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B6CBB"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.gov.nhm.caregrid",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "CareGrid needs location to find nearby health centres.",
+        "NSMicrophoneUsageDescription": "CareGrid uses microphone for voice symptom input.",
+        "NSCameraUsageDescription": "CareGrid uses camera for medicine barcode scanning."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B6CBB"
+      },
+      "package": "in.gov.nhm.caregrid",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "RECORD_AUDIO",
+        "CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-location"
+    ],
+    "scheme": "caregrid",
+    "extra": {
+      "router": { "origin": false },
+      "eas": { "projectId": "caregrid-ai" }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "CareGrid AI"
+version = "1.0.0"
+id = "artifacts/caregrid"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21088
+
+[services.development]
+run = "pnpm --filter @workspace/caregrid run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/caregrid", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/caregrid/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21088"
+BASE_PATH = "/"

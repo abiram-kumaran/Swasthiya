@@ -1,0 +1,848 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: CareGrid AI - District Healthcare Operations Engine API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: centers
+    description: Healthcare centers (PHC/CHC)
+  - name: inventory
+    description: Medicine inventory management
+  - name: logs
+    description: Daily patient and staff logs
+  - name: attendance
+    description: Doctor attendance tracking
+  - name: dispatch
+    description: Logistics and dispatch routes
+  - name: chat
+    description: Patient WhatsApp chatbot interface
+  - name: ai
+    description: AI-powered insights and predictions
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  # Centers
+  /centers:
+    get:
+      operationId: listCenters
+      tags: [centers]
+      summary: List all healthcare centers
+      responses:
+        "200":
+          description: List of centers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Center"
+
+  /centers/summary:
+    get:
+      operationId: getCentersSummary
+      tags: [centers]
+      summary: Get district-wide KPI summary
+      responses:
+        "200":
+          description: KPI summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CentersSummary"
+
+  /centers/{id}:
+    get:
+      operationId: getCenter
+      tags: [centers]
+      summary: Get a single center
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Center
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCenter
+      tags: [centers]
+      summary: Update center details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CenterUpdate"
+      responses:
+        "200":
+          description: Updated center
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Center"
+
+  # Inventory
+  /inventory:
+    get:
+      operationId: listInventory
+      tags: [inventory]
+      summary: List inventory items
+      parameters:
+        - name: centerId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inventory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+
+  /inventory/alerts:
+    get:
+      operationId: getInventoryAlerts
+      tags: [inventory]
+      summary: Get critical shortage alerts across all centers
+      responses:
+        "200":
+          description: List of critical shortage alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryAlert"
+
+  /inventory/scan:
+    post:
+      operationId: scanInventory
+      tags: [inventory]
+      summary: Simulate OCR scan to update medicine stock
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScanInput"
+      responses:
+        "200":
+          description: Updated inventory item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+
+  /inventory/{id}:
+    patch:
+      operationId: updateInventoryItem
+      tags: [inventory]
+      summary: Update inventory item quantity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InventoryUpdate"
+      responses:
+        "200":
+          description: Updated inventory item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryItem"
+        "404":
+          description: Not found
+
+  # Daily Logs
+  /logs:
+    get:
+      operationId: listLogs
+      tags: [logs]
+      summary: Get daily patient/staff logs
+      parameters:
+        - name: centerId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Daily logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyLog"
+    post:
+      operationId: createLog
+      tags: [logs]
+      summary: Create or update a daily log entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogInput"
+      responses:
+        "201":
+          description: Created log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyLog"
+
+  /logs/voice:
+    post:
+      operationId: processVoiceLog
+      tags: [logs]
+      summary: Process a voice log entry via AI parsing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoiceLogInput"
+      responses:
+        "200":
+          description: Parsed and applied voice log result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceLogResult"
+
+  # Attendance
+  /attendance:
+    get:
+      operationId: listAttendance
+      tags: [attendance]
+      summary: List attendance records
+      parameters:
+        - name: centerId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Attendance records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AttendanceRecord"
+    post:
+      operationId: logAttendance
+      tags: [attendance]
+      summary: Log doctor attendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttendanceInput"
+      responses:
+        "201":
+          description: Attendance logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttendanceRecord"
+
+  # Dispatch
+  /dispatch:
+    get:
+      operationId: listDispatch
+      tags: [dispatch]
+      summary: List dispatch routes
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dispatch routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DispatchRoute"
+    post:
+      operationId: createDispatch
+      tags: [dispatch]
+      summary: Create a new dispatch route
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchInput"
+      responses:
+        "201":
+          description: Dispatch route created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DispatchRoute"
+
+  /dispatch/{id}:
+    patch:
+      operationId: updateDispatch
+      tags: [dispatch]
+      summary: Update dispatch route status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DispatchUpdate"
+      responses:
+        "200":
+          description: Updated dispatch route
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DispatchRoute"
+        "404":
+          description: Not found
+
+  # Chat (Patient WhatsApp bot)
+  /chat/messages:
+    get:
+      operationId: listChatMessages
+      tags: [chat]
+      summary: Get chat conversation messages
+      parameters:
+        - name: sessionId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a patient message and receive bot reply
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: Bot reply with updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatResponse"
+
+  # AI Insights
+  /ai/epidemic-radar:
+    get:
+      operationId: getEpidemicRadar
+      tags: [ai]
+      summary: Get AI epidemic predictions and weather-based surge warnings
+      responses:
+        "200":
+          description: Epidemic radar data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EpidemicAlert"
+
+  /ai/redistribution:
+    get:
+      operationId: getRedistributionSuggestions
+      tags: [ai]
+      summary: Get AI-generated smart resource redistribution suggestions
+      responses:
+        "200":
+          description: Redistribution suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RedistributionSuggestion"
+
+  /ai/redistribution/{id}/approve:
+    post:
+      operationId: approveRedistribution
+      tags: [ai]
+      summary: Approve a redistribution suggestion and trigger dispatch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Approved and dispatch created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DispatchRoute"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Center:
+      type: object
+      required: [id, name, type, lat, lng, bedCapacity, activeBeds, status]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [PHC, CHC]
+        lat:
+          type: number
+        lng:
+          type: number
+        bedCapacity:
+          type: integer
+        activeBeds:
+          type: integer
+        doctorsPresent:
+          type: integer
+        patientFootfall:
+          type: integer
+        status:
+          type: string
+          enum: [healthy, warning, critical]
+        waitTimeMinutes:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    CenterUpdate:
+      type: object
+      properties:
+        activeBeds:
+          type: integer
+        doctorsPresent:
+          type: integer
+        patientFootfall:
+          type: integer
+        status:
+          type: string
+          enum: [healthy, warning, critical]
+
+    CentersSummary:
+      type: object
+      required: [totalBeds, activeBeds, activeStaff, criticalShortages, pendingAiActions, totalCenters, criticalCenters]
+      properties:
+        totalBeds:
+          type: integer
+        activeBeds:
+          type: integer
+        activeStaff:
+          type: integer
+        criticalShortages:
+          type: integer
+        pendingAiActions:
+          type: integer
+        totalCenters:
+          type: integer
+        criticalCenters:
+          type: integer
+
+    InventoryItem:
+      type: object
+      required: [id, centerId, centerName, medicineName, quantity, dailyBurnRate, status]
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        centerName:
+          type: string
+        medicineName:
+          type: string
+        quantity:
+          type: integer
+        dailyBurnRate:
+          type: number
+        status:
+          type: string
+          enum: [ok, low, critical, surplus]
+        daysRemaining:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    InventoryUpdate:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        dailyBurnRate:
+          type: number
+
+    ScanInput:
+      type: object
+      required: [centerId, imageText]
+      properties:
+        centerId:
+          type: integer
+        imageText:
+          type: string
+        quantity:
+          type: integer
+
+    InventoryAlert:
+      type: object
+      required: [inventoryItemId, centerId, centerName, medicineName, quantity, daysRemaining, severity]
+      properties:
+        inventoryItemId:
+          type: integer
+        centerId:
+          type: integer
+        centerName:
+          type: string
+        medicineName:
+          type: string
+        quantity:
+          type: integer
+        daysRemaining:
+          type: number
+        severity:
+          type: string
+          enum: [low, critical]
+
+    DailyLog:
+      type: object
+      required: [id, centerId, centerName, date, patientFootfall, doctorsPresent, aiAnomalyFlag]
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        centerName:
+          type: string
+        date:
+          type: string
+        patientFootfall:
+          type: integer
+        doctorsPresent:
+          type: integer
+        aiAnomalyFlag:
+          type: boolean
+        notes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    LogInput:
+      type: object
+      required: [centerId, date, patientFootfall, doctorsPresent]
+      properties:
+        centerId:
+          type: integer
+        date:
+          type: string
+        patientFootfall:
+          type: integer
+        doctorsPresent:
+          type: integer
+        aiAnomalyFlag:
+          type: boolean
+        notes:
+          type: string
+
+    VoiceLogInput:
+      type: object
+      required: [centerId, transcript]
+      properties:
+        centerId:
+          type: integer
+        transcript:
+          type: string
+        language:
+          type: string
+
+    VoiceLogResult:
+      type: object
+      required: [parsed, log, message]
+      properties:
+        parsed:
+          type: object
+          properties:
+            patientFootfall:
+              type: ["integer", "null"]
+            medicineName:
+              type: ["string", "null"]
+            stockStatus:
+              type: ["string", "null"]
+        log:
+          $ref: "#/components/schemas/DailyLog"
+        message:
+          type: string
+
+    AttendanceRecord:
+      type: object
+      required: [id, centerId, centerName, doctorName, date, checkInTime, present]
+      properties:
+        id:
+          type: integer
+        centerId:
+          type: integer
+        centerName:
+          type: string
+        doctorName:
+          type: string
+        date:
+          type: string
+        checkInTime:
+          type: string
+        lat:
+          type: ["number", "null"]
+        lng:
+          type: ["number", "null"]
+        present:
+          type: boolean
+        createdAt:
+          type: string
+
+    AttendanceInput:
+      type: object
+      required: [centerId, doctorName, date]
+      properties:
+        centerId:
+          type: integer
+        doctorName:
+          type: string
+        date:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+
+    DispatchRoute:
+      type: object
+      required: [id, fromCenterId, fromCenterName, toCenterId, toCenterName, payload, status, createdAt]
+      properties:
+        id:
+          type: integer
+        fromCenterId:
+          type: integer
+        fromCenterName:
+          type: string
+        toCenterId:
+          type: integer
+        toCenterName:
+          type: string
+        driverName:
+          type: ["string", "null"]
+        payload:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_transit, completed, cancelled]
+        estimatedMinutes:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    DispatchInput:
+      type: object
+      required: [fromCenterId, toCenterId, payload]
+      properties:
+        fromCenterId:
+          type: integer
+        toCenterId:
+          type: integer
+        driverName:
+          type: string
+        payload:
+          type: string
+        estimatedMinutes:
+          type: integer
+
+    DispatchUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, in_transit, completed, cancelled]
+        driverName:
+          type: string
+
+    ChatMessage:
+      type: object
+      required: [id, sessionId, role, content, createdAt]
+      properties:
+        id:
+          type: integer
+        sessionId:
+          type: string
+        role:
+          type: string
+          enum: [user, bot]
+        content:
+          type: string
+        isAlert:
+          type: boolean
+        createdAt:
+          type: string
+
+    ChatInput:
+      type: object
+      required: [sessionId, content]
+      properties:
+        sessionId:
+          type: string
+        content:
+          type: string
+        isVoice:
+          type: boolean
+
+    ChatResponse:
+      type: object
+      required: [userMessage, botMessage]
+      properties:
+        userMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        botMessage:
+          $ref: "#/components/schemas/ChatMessage"
+        isAlert:
+          type: boolean
+
+    EpidemicAlert:
+      type: object
+      required: [id, type, severity, message, affectedCenters, predictedSurgePercent, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        message:
+          type: string
+        affectedCenters:
+          type: array
+          items:
+            type: string
+        predictedSurgePercent:
+          type: integer
+        weatherTrigger:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    RedistributionSuggestion:
+      type: object
+      required: [id, fromCenterId, fromCenterName, toCenterId, toCenterName, medicineName, quantity, reason, approved]
+      properties:
+        id:
+          type: string
+        fromCenterId:
+          type: integer
+        fromCenterName:
+          type: string
+        toCenterId:
+          type: integer
+        toCenterName:
+          type: string
+        medicineName:
+          type: string
+        quantity:
+          type: integer
+        reason:
+          type: string
+        approved:
+          type: boolean
+        estimatedTransitMinutes:
+          type: integer
+        createdAt:
+          type: string
