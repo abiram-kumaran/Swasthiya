@@ -104,18 +104,22 @@ export const doctorActions = {
     const att: AttendanceRecord = {
       date: now.toISOString().split('T')[0],
       startTime: now.toTimeString().slice(0, 5),
-      endTime: null,
-      dutyHours: 0,
-      patientsConsulted: 0,
-      referrals: 0,
-      labRequests: 0,
-      gpsVerified: true,
-      wifiVerified: true,
-      faceVerified: true,
+      endTime: null, dutyHours: 0, patientsConsulted: 0,
+      referrals: 0, labRequests: 0,
+      gpsVerified: true, wifiVerified: true, faceVerified: true,
       status: 'on_duty',
     };
     state = { ...state, attendance: att };
     save(); notify();
+    // Push to appDB so Clinic Staff and Admin see doctor online
+    if (state.session) {
+      import('./appDB').then(m => {
+        m.db_actions.setDoctorOnDuty(
+          state.session!.empId, state.session!.name,
+          state.session!.specialty, state.session!.phcId, true
+        );
+      });
+    }
   },
 
   endDuty() {
@@ -137,6 +141,15 @@ export const doctorActions = {
       },
     };
     save(); notify();
+    // Update appDB — doctor now offline
+    if (state.session) {
+      import('./appDB').then(m => {
+        m.db_actions.setDoctorOnDuty(
+          state.session!.empId, state.session!.name,
+          state.session!.specialty, state.session!.phcId, false
+        );
+      });
+    }
   },
 
   addConsultation() {

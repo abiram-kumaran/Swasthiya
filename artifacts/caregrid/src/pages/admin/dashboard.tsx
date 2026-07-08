@@ -6,9 +6,10 @@ import {
   BedDouble, Building2, TrendingUp, TrendingDown, Bell,
   ChevronRight, LogOut, Shield,
 } from 'lucide-react';
-import { CENTERS, AI_ACTIONS, DISTRICT_KPIS } from '@/lib/data';
+import { CENTERS, AI_ACTIONS } from '@/lib/data';
 import { useStockRequestStore } from '../stock/stockRequestStore';
 import { useAdminSession, adminSessionActions } from '@/lib/adminStore';
+import { useAppDB } from '@/lib/appDB';
 import { toast } from 'sonner';
 
 /* ── Live clock ─────────────────────────────────────────── */
@@ -35,23 +36,33 @@ function districtScore(centers: typeof CENTERS): number {
 export default function AdminDashboard() {
   const time = useClock();
   const session = useAdminSession();
+  const appDB = useAppDB();
   const { requests, notifications } = useStockRequestStore();
   const unreadAdmin = notifications.filter(n => n.for === 'admin' && !n.read).length;
   const pendingReqs = requests.filter(r => r.status === 'pending_approval').length;
   const aiPending   = AI_ACTIONS.filter(a => !a.approved && !a.rejected).length;
 
-  const score = districtScore(CENTERS);
-  const hour = time.getHours();
+  // Live stats from appDB (start at 0, grow as users enter real data)
+  const stats       = appDB.districtStats;
+  const score       = Math.max(0, Math.min(100, 100 - (
+    (stats.totalBedsFree === 0 && stats.totalBedsTotal > 0 ? 30 : 0) +
+    (stats.totalDoctorsOnDuty === 0 ? 20 : 0) +
+    (pendingReqs > 5 ? 15 : pendingReqs > 0 ? 5 : 0)
+  )));
+
+  const hour     = time.getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-  const totalPatients = CENTERS.reduce((s, c) => s + c.footfallToday, 0);
-  const activeDoctors = CENTERS.reduce((s, c) => s + c.doctors, 0);
-  const freeBeds      = CENTERS.reduce((s, c) => s + c.beds, 0);
+
+  // Use CENTERS for facility list (static PHC config, not patient data)
+  const totalPatients = stats.totalPatientsToday;
+  const activeDoctors = stats.totalDoctorsOnDuty;
+  const freeBeds      = stats.totalBedsFree;
   const criticalCount = CENTERS.filter(c => c.status === 'critical').length;
   const avgWait       = Math.round(CENTERS.reduce((s, c) => s + c.waitMins, 0) / CENTERS.length);
 
   const KPIs = [
     { label: 'Total PHCs/CHCs', value: String(CENTERS.length),  icon: Building2,   color: 'blue',   trend: null },
-    { label: 'Patients Today',  value: String(totalPatients),   icon: Users,       color: 'green',  trend: '+12%' },
+    { label: 'Patients Today',  value: String(totalPatients),   icon: Users,       color: 'green',  trend: null },
     { label: 'Active Doctors',  value: String(activeDoctors),   icon: Stethoscope, color: 'cyan',   trend: null },
     { label: 'Free Beds',       value: String(freeBeds),        icon: BedDouble,   color: freeBeds < 10 ? 'red' : 'emerald', trend: null },
     { label: 'Stock Alerts',    value: String(requests.filter(r=>r.status==='pending_approval').length + 3), icon: Package, color: 'orange', trend: 'urgent' },

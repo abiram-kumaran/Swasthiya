@@ -126,11 +126,30 @@ export const staffAuthActions = {
     return true;
   },
 
+  /** Create session from AppDB account (used by StaffLogin component) */
+  createSessionFromAccount(acc: import('./appDB').UserAccount) {
+    const role = acc.role as StaffRole;
+    const session: StaffSession = {
+      role,
+      empId: acc.username,
+      name: acc.name,
+      phone: acc.phone,
+      facility: acc.facility,
+      facilityCode: acc.facilityCode,
+      district: acc.district,
+      department: acc.department,
+      designation: acc.designation,
+      loginAt: new Date().toISOString(),
+      sessionToken: `${role}-${Date.now().toString(36)}`,
+    };
+    sessions[role] = session;
+    localStorage.setItem(KEYS[role], JSON.stringify(session));
+    notify(role);
+  },
+
   logout(role: StaffRole) {
     sessions[role] = null;
     localStorage.removeItem(KEYS[role]);
     notify(role);
-    // NOTE: Aadhaar verification status is NOT cleared on logout.
-    // It persists on the device. User would need to clear app data to reset it.
   },
 };

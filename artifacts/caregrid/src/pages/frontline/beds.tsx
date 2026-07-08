@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { BedDouble, Plus, Minus, Edit3, Check, X, AlertTriangle, WifiOff, Clock, RefreshCw } from 'lucide-react';
+import { useStaffSession } from '@/lib/staffAuth';
+import { db_actions } from '@/lib/appDB';
 import { CENTERS } from '@/lib/data';
 
 /* ── Types ──────────────────────────────────────────────── */
@@ -18,11 +20,11 @@ const STORAGE_KEY = 'caregrid_beds_v1';
 const PENDING_KEY = 'caregrid_beds_pending_v1';
 
 const DEFAULT_WARDS: BedWard[] = [
-  { id: 'general',   name: 'General Ward',       total: 12, occupied: 10, lastUpdated: new Date().toISOString(), notes: '' },
-  { id: 'maternity', name: 'Maternity Ward',      total: 6,  occupied: 4,  lastUpdated: new Date().toISOString(), notes: '' },
-  { id: 'paed',      name: 'Paediatric Ward',     total: 4,  occupied: 2,  lastUpdated: new Date().toISOString(), notes: '' },
-  { id: 'obs',       name: 'Observation Room',    total: 4,  occupied: 3,  lastUpdated: new Date().toISOString(), notes: '' },
-  { id: 'emerg',     name: 'Emergency Bay',       total: 4,  occupied: 4,  lastUpdated: new Date().toISOString(), notes: '' },
+  { id: 'general',   name: 'General Ward',    total: 0, occupied: 0, lastUpdated: new Date().toISOString(), notes: '' },
+  { id: 'maternity', name: 'Maternity Ward',  total: 0, occupied: 0, lastUpdated: new Date().toISOString(), notes: '' },
+  { id: 'paed',      name: 'Paediatric Ward', total: 0, occupied: 0, lastUpdated: new Date().toISOString(), notes: '' },
+  { id: 'obs',       name: 'Observation Room',total: 0, occupied: 0, lastUpdated: new Date().toISOString(), notes: '' },
+  { id: 'emerg',     name: 'Emergency Bay',   total: 0, occupied: 0, lastUpdated: new Date().toISOString(), notes: '' },
 ];
 
 function loadWards(): BedWard[] {
@@ -202,6 +204,8 @@ export default function FrontlineBeds() {
   const [wards, setWards] = useState<BedWard[]>(loadWards);
   const [online, setOnline] = useState(navigator.onLine);
   const [syncing, setSyncing] = useState(false);
+  const session = useStaffSession('staff');
+  const facilityCode = session?.facilityCode ?? 'PHC-01';
 
   useEffect(() => {
     const on  = () => setOnline(true);
@@ -215,6 +219,9 @@ export default function FrontlineBeds() {
     setWards(prev => {
       const next = prev.map(w => w.id === id ? { ...w, ...updates } : w);
       saveWards(next);
+      // Sync to appDB so patient portal and admin see live bed counts
+      const updated = next.find(w => w.id === id)!;
+      db_actions.upsertBedWard({ ...updated, facilityCode });
       return next;
     });
   }

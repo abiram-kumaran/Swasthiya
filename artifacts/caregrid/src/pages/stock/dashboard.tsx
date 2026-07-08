@@ -5,24 +5,32 @@ import {
   ClipboardList, ArrowRight, Zap, User,
 } from 'lucide-react';
 import { useInventoryStore, type StockMedicine } from './inventoryStore';
+import { useStockRequestStore } from './stockRequestStore';
+import { useStaffSession } from '@/lib/staffAuth';
+
 export default function StockDashboard() {
   const { medicines } = useInventoryStore();
   const meds: StockMedicine[] = medicines;
+  const { requests } = useStockRequestStore();
+  const session = useStaffSession('stock');
 
-  const criticalCount  = meds.filter((m) => m.status === 'critical').length;
-  const lowCount       = meds.filter((m) => m.status === 'low').length;
-  const expiringCount  = meds.filter((m) => {
+  const criticalCount  = meds.filter(m => m.status === 'critical').length;
+  const lowCount       = meds.filter(m => m.status === 'low').length;
+  const expiringCount  = meds.filter(m => {
     const diff = (new Date(m.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return diff < 30;
   }).length;
-  const totalMeds        = meds.length;
-  const pendingTransfers = 2;
-  const todayUpdates     = 12;
+  const totalMeds      = meds.length;
 
-  const today = new Date().toLocaleDateString('en-IN', {
-    weekday: 'long', day: 'numeric', month: 'long',
-  });
-  const criticalMeds = meds.filter((m) => m.status === 'critical' || m.status === 'low');
+  // Live counts from store — no hardcoded numbers
+  const pendingTransfers = requests.filter(r => r.status === 'pending_approval').length;
+  const todayStr         = new Date().toISOString().split('T')[0];
+  const todayUpdates     = requests.filter(r => r.requestedAt.startsWith(todayStr)).length;
+
+  const today        = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  const criticalMeds = meds.filter(m => m.status === 'critical' || m.status === 'low');
+  const staffName    = session?.name?.split(' ')[0] ?? 'Staff';
+  const phcName      = session?.facility ?? 'PHC Inventory';
 
   return (
     <div className="pb-4">
@@ -31,23 +39,21 @@ export default function StockDashboard() {
         <div className="flex items-start justify-between mb-3">
           <div>
             <h1 className="text-base font-bold">Stock Handler Portal</h1>
-            <p className="text-emerald-100 text-[11px] mt-0.5">PHC Alpha Inventory Management</p>
+            <p className="text-emerald-100 text-[11px] mt-0.5">{phcName}</p>
           </div>
           <div className="flex flex-col items-end">
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center mb-1">
               <User className="w-4 h-4 text-white" />
             </div>
-            <p className="text-[10px] text-emerald-100">Kumar S.</p>
+            <p className="text-[10px] text-emerald-100">{staffName}</p>
           </div>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5 text-emerald-100 text-[11px]">
-            <Calendar className="w-3.5 h-3.5" />
-            {today}
+            <Calendar className="w-3.5 h-3.5" />{today}
           </div>
           <span className="flex items-center gap-1 bg-green-500/20 border border-green-400/30 text-green-200 text-[10px] px-2 py-0.5 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-300 blink" />
-            On Duty
+            <span className="w-1.5 h-1.5 rounded-full bg-green-300 blink" />On Duty
           </span>
         </div>
       </div>
@@ -69,13 +75,8 @@ export default function StockDashboard() {
               amber:  'bg-amber-50  text-amber-700  border-amber-100',
             };
             return (
-              <motion.div
-                key={s.label}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className={`rounded-xl p-3 ${colorMap[s.color]} border`}
-              >
+              <motion.div key={s.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }} className={`rounded-xl p-3 ${colorMap[s.color]} border`}>
                 <Icon className="w-4 h-4 mb-1.5 opacity-70" />
                 <p className="text-lg font-bold leading-none">{s.value}</p>
                 <p className="text-[10px] mt-0.5 opacity-80">{s.label}</p>
@@ -84,7 +85,7 @@ export default function StockDashboard() {
           })}
         </div>
 
-        {/* Today summary */}
+        {/* Live counts — no hardcoded values */}
         <div className="grid grid-cols-2 gap-2">
           <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
@@ -97,10 +98,10 @@ export default function StockDashboard() {
           <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
             <div className="flex items-center gap-2 mb-1">
               <ClipboardList className="w-3.5 h-3.5 text-green-600" />
-              <p className="text-[10px] font-semibold text-gray-600 uppercase">Today's Updates</p>
+              <p className="text-[10px] font-semibold text-gray-600 uppercase">Today's Requests</p>
             </div>
             <p className="text-2xl font-bold text-gray-900">{todayUpdates}</p>
-            <p className="text-[9px] text-gray-400 mt-0.5">Stock entries</p>
+            <p className="text-[9px] text-gray-400 mt-0.5">Submitted today</p>
           </div>
         </div>
 
@@ -113,13 +114,15 @@ export default function StockDashboard() {
               <p className="text-[11px] leading-relaxed text-purple-100">
                 {criticalMeds.length > 0
                   ? 'Critical stock alerts detected. Immediate action required to prevent stockout.'
+                  : totalMeds === 0
+                  ? 'No medicines added yet. Add stock from the Inventory tab.'
                   : 'All inventory levels are currently healthy. No urgent alerts.'}
               </p>
             </div>
           </div>
           {criticalMeds.length > 0 ? (
             <div className="space-y-2">
-              {criticalMeds.slice(0, 2).map((med) => (
+              {criticalMeds.slice(0, 2).map(med => (
                 <div key={med.id} className="bg-white/10 backdrop-blur-sm rounded-lg p-2.5 border border-white/20">
                   <div className="flex items-start justify-between gap-2 mb-1.5">
                     <div className="flex-1 min-w-0">
@@ -128,21 +131,15 @@ export default function StockDashboard() {
                         ⚠️ {med.daysLeft === 0 ? 'Stock-out today!' : `${med.daysLeft} days remaining`}
                       </p>
                     </div>
-                    <span className="shrink-0 text-xs font-black text-white">
-                      {med.quantity} {med.unit}
-                    </span>
+                    <span className="shrink-0 text-xs font-black text-white">{med.quantity} {med.unit}</span>
                   </div>
                   {med.predictedStockout && (
                     <p className="text-[10px] text-purple-200 mb-2">
-                      AI Prediction: Stock-out on{' '}
-                      <strong className="text-white">{med.predictedStockout}</strong>
+                      AI Prediction: Stock-out on <strong className="text-white">{med.predictedStockout}</strong>
                     </p>
                   )}
                   <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-purple-200">
-                      Recommended:{' '}
-                      <strong className="text-white">{med.aiRecommendedOrder} units</strong>
-                    </span>
+                    <span className="text-purple-200">Recommended: <strong className="text-white">{med.aiRecommendedOrder} units</strong></span>
                     <Link href="/stock/transfers">
                       <button className="bg-white text-purple-700 font-bold px-2.5 py-1 rounded-md text-[10px] hover:bg-purple-50 transition-colors">
                         Request Transfer
@@ -154,12 +151,12 @@ export default function StockDashboard() {
             </div>
           ) : (
             <div className="bg-white/10 rounded-lg p-2.5 border border-white/20 text-[11px] text-purple-100 text-center">
-              ✅ All medicines stocked above minimum levels.
+              {totalMeds === 0 ? '📦 Add medicines from the Inventory tab to get started.' : '✅ All medicines stocked above minimum levels.'}
             </div>
           )}
         </div>
 
-        {/* Quick Actions — 2 buttons only */}
+        {/* Quick Actions */}
         <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
           <p className="text-xs font-bold text-gray-800 mb-2.5">Quick Actions</p>
           <div className="grid grid-cols-2 gap-2">

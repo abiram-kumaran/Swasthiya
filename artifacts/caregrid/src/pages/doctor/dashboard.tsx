@@ -7,7 +7,7 @@ import {
   Wifi, Camera, X, Play, Square, Shield, Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PATIENTS } from '@/lib/data';
+import { useAppDB } from '@/lib/appDB';
 import { useDoctorStore, doctorActions } from '@/lib/doctorStore';
 
 /* ── PHC GPS coordinates (Peelamedu Urban PHC) ─────────── */
@@ -252,12 +252,6 @@ function AttendanceModal({ mode, onClose, onSuccess }: {
 }
 
 /* ── Dashboard ───────────────────────────────────────────── */
-const FOLLOW_UPS = [
-  { name: 'Muthu Selvam',  time: '11:00 AM', type: 'BP Review',        priority: 'senior'   },
-  { name: 'Kavitha Rajan', time: '12:30 PM', type: 'ANC Checkup',      priority: 'pregnant' },
-  { name: 'Arjun Kumar',   time: '02:00 PM', type: 'Asthma Follow-up', priority: 'child'    },
-];
-
 const PRIORITY_COLOR: Record<string, string> = {
   emergency:'bg-red-100 text-red-700', senior:'bg-amber-100 text-amber-700',
   pregnant:'bg-pink-100 text-pink-700', child:'bg-blue-100 text-blue-700', normal:'bg-gray-100 text-gray-600',
@@ -265,16 +259,29 @@ const PRIORITY_COLOR: Record<string, string> = {
 
 export default function DoctorDashboard() {
   const { session, attendance, consultationCount } = useDoctorStore();
+  const appDB = useAppDB();
   const [showAttend, setShowAttend] = useState(false);
   const [attendMode, setAttendMode] = useState<'start'|'end'>('start');
 
-  const isOnDuty   = attendance?.status === 'on_duty';
-  const totalPts   = PATIENTS.length;
-  const waitingPts = PATIENTS.filter(p => p.tokenNumber !== null).length;
-  const emergency  = PATIENTS.filter(p => p.priority === 'emergency').length;
-  const hour       = new Date().getHours();
-  const greeting   = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
-  const today      = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
+  const facilityCode = session?.phcId ?? '';
+  const today = new Date().toISOString().split('T')[0];
+
+  // All counts from appDB — start at 0 until clinic staff registers patients
+  const todayPatients = appDB.patients.filter(p => p.facilityCode === facilityCode && p.registeredAt.startsWith(today));
+  const totalPts      = todayPatients.length;
+  const waitingPts    = todayPatients.filter(p => p.status === 'waiting').length;
+  const emergency     = todayPatients.filter(p => p.priority === 'emergency').length;
+  const pendingLab    = appDB.consultations.filter(c => c.doctorEmpId === session?.empId && c.labRequests.length > 0 && c.consultedAt.startsWith(today)).length;
+
+  // Follow-ups from consultations that had referral/follow-up notes
+  const followUps = appDB.consultations
+    .filter(c => c.doctorEmpId === session?.empId && c.consultedAt.startsWith(today))
+    .slice(0, 3);
+
+  const isOnDuty  = attendance?.status === 'on_duty';
+  const hour      = new Date().getHours();
+  const greeting  = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const todayLabel = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });
 
   function openAttendance(mode: 'start'|'end') {
     setAttendMode(mode);
@@ -298,7 +305,7 @@ export default function DoctorDashboard() {
               <span className={`w-1.5 h-1.5 rounded-full ${isOnDuty ? 'bg-green-300 blink' : 'bg-gray-400'}`}/>
               {isOnDuty ? 'On Duty' : 'Off Duty'}
             </span>
-            <p className="text-[10px] text-cyan-400 mt-1 text-right">{today}</p>
+            <p className="text-[10px] text-cyan-400 mt-1 text-right">{todayLabel}</p>
           </div>
         </div>
 
@@ -388,7 +395,7 @@ export default function DoctorDashboard() {
             <div className="flex items-center gap-2 mb-1"><Calendar className="w-3.5 h-3.5 text-purple-600"/>
               <p className="text-[10px] font-semibold text-gray-500 uppercase">Follow-ups</p>
             </div>
-            <p className="text-2xl font-black text-gray-900">{FOLLOW_UPS.length}</p>
+            <p className="text-2xl font-black text-gray-900">{followUps.length}</p>
             <p className="text-[9px] text-gray-400 mt-0.5">Today's schedule</p>
           </div>
         </div>
@@ -396,20 +403,27 @@ export default function DoctorDashboard() {
         {/* Follow-ups */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
-            <p className="text-xs font-bold text-gray-800">Today's Follow-ups</p>
+            <p className="text-xs font-bold text-gray-800">Today's Consultations</p>
             <Link href="/doctor/patients"><span className="text-[11px] text-cyan-600 font-semibold">View All →</span></Link>
           </div>
           <div className="divide-y divide-gray-50">
-            {FOLLOW_UPS.map(f => (
-              <div key={f.name} className="flex items-center gap-3 px-4 py-3">
+            {followUps.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center py-4">No consultations yet today.</p>
+            ) : followUps.map(c => (
+              <div key={c.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="w-7 h-7 rounded-full bg-cyan-100 flex items-center justify-center shrink-0">
                   <Stethoscope className="w-3.5 h-3.5 text-cyan-600"/>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800">{f.name}</p>
-                  <p className="text-[10px] text-gray-400">{f.type} · {f.time}</p>
+                  <p className="text-xs font-semibold text-gray-800">{c.patientName}</p>
+                  <p className="text-[10px] text-gray-400">
+                    {new Date(c.consultedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                    {c.diagnosis.length > 0 ? ` · ${c.diagnosis[0]}` : ''}
+                  </p>
                 </div>
-                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${PRIORITY_COLOR[f.priority]}`}>{f.priority}</span>
+                {c.referral && (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Referred</span>
+                )}
               </div>
             ))}
           </div>
