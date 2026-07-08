@@ -1,453 +1,405 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, ChevronDown, ChevronUp, Phone, WifiOff } from 'lucide-react';
-import { useTranslation, Language } from '@/lib/translations';
+import { Send, Phone, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { useTranslation } from '@/lib/translations';
 import { CENTERS } from '@/lib/data';
+import { getPatient } from '@/lib/patientStore';
 
-/* ─── Types ───────────────────────────────────────────────── */
+/* ── Types ──────────────────────────────────────────────── */
 interface Message {
   id: string;
   role: 'ai' | 'user';
   text: string;
   emergency?: boolean;
-  firstAidTips?: string[];
+  tips?: string[];
+  chips?: string[];
 }
 
-// --- Haversine distance ---
-function dist(lat1: number, lng1: number, lat2: number, lng2: number): string {
+/* ── Haversine ──────────────────────────────────────────── */
+function dist(lat1: number, lng1: number, lat2: number, lng2: number) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLng = (lng2 - lng1) * Math.PI / 180;
   const a = Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
   const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1)} km`;
 }
 
-/* ─── AI Response Logic ───────────────────────────────────── */
-function getAiResponse(input: string, lang: Language, userPos: { lat: number; lng: number } | null): Omit<Message, 'id'> {
-  const lower = input.toLowerCase();
+/* ── Simple markdown renderer ───────────────────────────── */
+function renderMd(text: string): React.ReactNode[] {
+  return text.split('\n').map((line, i) => {
+    if (!line.trim()) return <br key={i} />;
+    // Bold **text**
+    const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={j}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+    // Bullet points
+    if (line.trimStart().startsWith('•') || line.trimStart().startsWith('-')) {
+      return (
+        <div key={i} className="flex items-start gap-1.5 mt-1">
+          <span className="text-blue-400 mt-0.5 shrink-0">•</span>
+          <span>{parts.slice(1)}</span>
+        </div>
+      );
+    }
+    return <p key={i} className="mt-1 first:mt-0">{parts}</p>;
+  });
+}
 
-  // Find closest centers
+/* ── AI response engine ─────────────────────────────────── */
+function getAiResponse(
+  input: string,
+  langCode: string,
+  userPos: { lat: number; lng: number } | null,
+  patient: ReturnType<typeof getPatient>,
+): Omit<Message, 'id'> {
+  const lower = input.toLowerCase();
   const sorted = [...CENTERS].sort((a, b) => {
     if (!userPos) return 0;
-    const d1 = Math.pow(a.lat - userPos.lat, 2) + Math.pow(a.lng - userPos.lng, 2);
-    const d2 = Math.pow(b.lat - userPos.lat, 2) + Math.pow(b.lng - userPos.lng, 2);
-    return d1 - d2;
+    return ((a.lat - userPos.lat) ** 2 + (a.lng - userPos.lng) ** 2) -
+           ((b.lat - userPos.lat) ** 2 + (b.lng - userPos.lng) ** 2);
   });
-  const nearestPhc = sorted.find(c => c.type === 'PHC') || sorted[0];
-  const nearestChc = sorted.find(c => c.type === 'CHC') || sorted[0];
-
+  const nearestPhc = sorted.find(c => c.type === 'PHC') ?? sorted[0];
+  const nearestChc = sorted.find(c => c.type === 'CHC') ?? sorted[0];
   const phcDist = userPos ? dist(userPos.lat, userPos.lng, nearestPhc.lat, nearestPhc.lng) : '2 km';
-  const chcDist = userPos ? dist(userPos.lat, userPos.lng, nearestChc.lat, nearestChc.lng) : '2.5 km';
+  const chcDist = userPos ? dist(userPos.lat, userPos.lng, nearestChc.lat, nearestChc.lng) : '3 km';
 
-  // 1. Emergency (Chest Pain / Heart / Breathing)
-  if (/chest|heart|breath|suffoc|दर्|सीना|நெஞ்சு|வலி|சுவாசம்|நெஞ்சுவலி|மூச்சு/i.test(lower)) {
-    if (lang === 'हिन्दी') {
-      return {
-        role: 'ai',
-        text: `🚨 आपातकालीन चेतावनी: आपके लक्षण हृदय संबंधी गंभीर समस्या का संकेत दे रहे हैं। कृपया तुरंत 108 पर कॉल करें।\n\nहम आपको तुरंत ${nearestChc.name} (${chcDist} दूर) जाने की सलाह देते हैं, जहाँ आपातकालीन बिस्तर उपलब्ध हैं।`,
-        emergency: true,
-      };
-    }
-    if (lang === 'தமிழ்') {
-      return {
-        role: 'ai',
-        text: `🚨 அவசர எச்சரிக்கை: உங்கள் அறிகுறிகள் கடுமையான இருதயப் பிரச்சினையைக் குறிக்கின்றன. உடனே 108 ஐ அழைக்கவும்.\n\nஅவசர படுக்கைகள் மற்றும் தீவிர சிகிச்சை வசதிகள் கொண்ட ${nearestChc.name} (${chcDist} தொலைவில் உள்ளது) செல்ல பரிந்துரைக்கிறோம்.`,
-        emergency: true,
-      };
-    }
+  const name = patient?.name?.split(' ')[0] ?? 'there';
+
+  // Emergency
+  if (/chest|heart|breath|suffoc|unconscious|collapse|stroke|attack/.test(lower)) {
     return {
       role: 'ai',
-      text: `🚨 EMERGENCY ALERT: Your symptoms suggest a potential cardiac issue. Please call 108 immediately.\n\nWe recommend heading directly to ${nearestChc.name} (${chcDist} away), which has emergency beds and critical care available.`,
       emergency: true,
+      text: `🚨 **Emergency Alert** — ${name}, your symptoms suggest a **critical cardiac or respiratory emergency**.\n\nPlease **call 108 immediately** and go to **${nearestChc.name}** (${chcDist} away) which has emergency beds and critical care.\n\nDo NOT wait or drive yourself.`,
     };
   }
 
-  // 2. Fever / Temperature / Flu
-  if (/fever|temp|cold|cough|flu|hot|बुखार|ताप|सर्दी|खांसी|காய்ச்சல்|சளி|இருமல்/i.test(lower)) {
-    if (lang === 'हिन्दी') {
-      return {
-        role: 'ai',
-        text: `बुखार और सर्दी के लक्षणों के लिए, हम ${nearestPhc.name} (${phcDist} दूर) जाने की सलाह देते हैं। यहाँ वर्तमान प्रतीक्षा समय लगभग ${nearestPhc.waitMins} मिनट है।\n\nडॉक्टर उपलब्ध हैं। तुरंत आराम के लिए ये सलाह लें:`,
-        firstAidTips: [
-          'दिन में ८-१० गिलास पानी/तरल पदार्थ पिएं',
-          'पूर्ण विश्राम करें और भारी काम से बचें',
-          'यदि तापमान ३८.५ डिग्री सेल्सियस से अधिक है, तो पैरासिटामोल ५०० एमजी लें',
-          'यदि बुखार ३ दिन से अधिक समय तक बना रहता है, तो डॉक्टर से मिलें'
-        ],
-      };
-    }
-    if (lang === 'தமிழ்') {
-      return {
-        role: 'ai',
-        text: `காய்ச்சல் மற்றும் சளி அறிகுறிகளுக்கு, நீங்கள் ${nearestPhc.name} (${phcDist} தொலைவில் உள்ளது) செல்ல பரிந்துரைக்கிறோம். தற்போதைய காத்திருப்பு நேரம் சுமார் ${nearestPhc.waitMins} நிமிடங்கள்.\n\nஉடனடி நிவாரணத்திற்கான குறிப்புகள்:`,
-        firstAidTips: [
-          'தினமும் 8-10 கிளாஸ் தண்ணீர் அல்லது திரவ உணவுகளை உட்கொள்ளவும்',
-          'முழு ஓய்வு எடுக்கவும், கடின வேலைகளை தவிர்க்கவும்',
-          'வெப்பநிலை 38.5°C க்கு மேல் இருந்தால் பாராசிட்டமால் 500mg மாத்திரை எடுக்கலாம்',
-          'காய்சல் 3 நாட்களுக்கு மேல் நீடித்தால் மருத்துவரை அணுகவும்'
-        ],
-      };
-    }
+  // Diabetes specific (personalised)
+  if (patient?.conditions.some(c => /diabet/i.test(c)) && /sugar|glucose|diabet|thirst|urine|fatigue/.test(lower)) {
     return {
       role: 'ai',
-      text: `Based on your symptoms (fever/cold), we recommend visiting ${nearestPhc.name} (${phcDist} away). Current wait time is around ${nearestPhc.waitMins} minutes.\n\nHere are some immediate self-care steps:`,
-      firstAidTips: [
-        'Drink 8–10 glasses of water or fluids daily',
-        'Take complete rest and avoid physical exertion',
-        'Paracetamol 500mg every 6 hours if temperature exceeds 38.5°C',
-        'Seek professional medical evaluation if fever persists > 3 days',
-      ],
+      text: `Based on your health profile, ${name}, you have **Diabetes**. Your symptoms may be related to blood sugar fluctuation.\n\n**What to do now:**\n- Check your blood glucose if you have a glucometer\n- If reading > 300 mg/dL, visit ${nearestPhc.name} immediately\n- Drink water if feeling thirsty or dizzy\n\nVisit **${nearestPhc.name}** (${phcDist} away) for a full checkup. Wait time: ~${nearestPhc.waitMins} mins.`,
+      tips: ['Check blood sugar before eating', 'Take insulin/medication on schedule', 'Avoid sugary drinks', 'Visit doctor if symptoms persist > 2 days'],
+      chips: ['Nearest Clinic', 'Diabetes Tips'],
     };
   }
 
-  // 3. Stomach pain / Diarrhea / Vomiting
-  if (/stomach|vomit|diarrh|belly|pain|पे|दस्|வயிற்று|வாந்தி/i.test(lower)) {
-    if (lang === 'हिन्दी') {
-      return {
-        role: 'ai',
-        text: `पेट दर्द या दस्त के लिए, निर्जलीकरण (dehydration) से बचना सबसे महत्वपूर्ण है। ओआरएस (ORS) घोल पिएं।\n\nयदि दर्द गंभीर है, तो तुरंत ${nearestChc.name} (${chcDist} दूर) जाएं, जहां 24/7 आपातकालीन सेवाएं उपलब्ध हैं।`,
-        firstAidTips: [
-          'ओआरएस (ORS) घोल या नारियल पानी पिएं',
-          'मसालेदार और भारी भोजन से बचें',
-          'उबला हुआ हल्का खाना जैसे खिचड़ी लें',
-          'उल्टी होने पर घूंट-घूंट कर पानी पिएं'
-        ],
-      };
-    }
-    if (lang === 'தமிழ்') {
-      return {
-        role: 'ai',
-        text: `வயிற்று வலி அல்லது வயிற்றுப்போக்கிற்கு, நீர்ச்சத்து இழப்பைத் தவிர்ப்பதே முக்கியம். ஓஆர்எஸ் (ORS) கரைசலைக் குடிக்கவும்.\n\nவலி அதிகமாக இருந்தால், 24/7 அவசர சிகிச்சை வசதி கொண்ட ${nearestChc.name} (${chcDist} தொலைவில் உள்ளது) செல்லவும்.`,
-        firstAidTips: [
-          'ஓஆர்எஸ் (ORS) கரைசல் அல்லது இளநீர் அடிக்கடி குடிக்கவும்',
-          'காரமான மற்றும் கடின உணவுகளை தவிர்க்கவும்',
-          'கஞ்சி அல்லது எளிதில் ஜீரணமாகும் உணவுகளை உட்கொள்ளவும்',
-          'ஓய்வு எடுக்கவும்'
-        ],
-      };
-    }
+  // BP specific (personalised)
+  if (patient?.conditions.some(c => /hypertension|blood pressure/i.test(c)) && /head|dizz|bp|pressure|blur/.test(lower)) {
     return {
       role: 'ai',
-      text: `For abdominal pain, diarrhea, or vomiting, it is crucial to stay hydrated. Drink ORS.\n\nIf the pain is severe or sharp, visit ${nearestChc.name} (${chcDist} away) immediately for full diagnostic services.`,
-      firstAidTips: [
-        'Rehydrate continuously with ORS solution or coconut water',
-        'Avoid spicy, oily, or heavy foods',
-        'Eat light, easily digestible food like boiled rice or porridge',
-        'Rest and monitor for signs of dehydration (dry mouth, dark urine)',
-      ],
+      text: `${name}, since you have **Hypertension**, dizziness or severe headache can indicate high blood pressure.\n\n**Immediate steps:**\n- Rest in a quiet place\n- Avoid salt and caffeine\n- Take your BP medication if prescribed\n\nIf BP is very high or you feel chest pain, go to **${nearestChc.name}** (${chcDist}) immediately.`,
+      tips: ['Check BP if possible', 'Take prescribed medication', 'Sit quietly — avoid stress', 'Avoid lifting or exertion'],
+      chips: ['Check BP', 'Find Nearest Clinic'],
     };
   }
 
-  // 4. Headache / Migraine
-  if (/head|migrain|सिर|தலை/i.test(lower)) {
-    if (lang === 'हिन्दी') {
-      return {
-        role: 'ai',
-        text: `सिरदर्द के लिए, हम शांत और अंधेरे कमरे में आराम करने की सलाह देते हैं।\n\nपरामर्श के लिए, आप ${nearestPhc.name} (${phcDist} दूर) जा सकते हैं, जहाँ सामान्य चिकित्सक उपलब्ध हैं।`,
-        firstAidTips: [
-          'शांत, अंधेरे कमरे में लेट जाएं',
-          'माथे पर ठंडी या गर्म पट्टी लगाएं',
-          'पर्याप्त मात्रा में पानी पिएं (निर्जलीकरण सिरदर्द का मुख्य कारण है)',
-          'मोबाइल या कंप्यूटर स्क्रीन देखने से बचें'
-        ],
-      };
-    }
-    if (lang === 'தமிழ்') {
-      return {
-        role: 'ai',
-        text: `தலைவலி அல்லது ஒற்றைத் தலைவலிக்கு, அமைதியான மற்றும் இருண்ட அறையில் ஓய்வெடுக்க பரிந்துரைக்கிறோம்.\n\nஆலோசனைக்கு, நீங்கள் ${nearestPhc.name} (${phcDist} தொலைவில் உள்ளது) செல்லலாம்.`,
-        firstAidTips: [
-          'அமைதியான, இருண்ட அறையில் படுத்து ஓய்வெடுக்கவும்',
-          'நெற்றியில் குளிர்ந்த அல்லது வெதுவெதுப்பான துணியை வைக்கவும்',
-          'நிறைய தண்ணீர் குடிக்கவும்',
-          'மொபைல், கணினி திரைகளைப் பார்ப்பதைத் தவிர்க்கவும்'
-        ],
-      };
-    }
+  // Fever
+  if (/fever|temp|hot|shiver|chills|ठंड|बुखार|காய்ச்சல்/.test(lower)) {
     return {
       role: 'ai',
-      text: `For headaches or migraines, we advise resting in a quiet, dark environment.\n\nTo consult a doctor, visit ${nearestPhc.name} (${phcDist} away) where physicians are available.`,
-      firstAidTips: [
-        'Rest in a quiet, dark room',
-        'Apply a cold or warm compress to your forehead',
-        'Stay hydrated — drink plenty of water',
-        'Avoid screens, laptop, and bright lights',
-      ],
+      text: `I understand you're experiencing **fever** symptoms.\n\nWe recommend visiting **${nearestPhc.name}** (${phcDist} away). Current wait time: ~**${nearestPhc.waitMins} minutes**.\n\n${nearestPhc.doctors} doctor(s) are available right now.`,
+      tips: ['Drink 8–10 glasses of water daily', 'Rest and avoid exertion', 'Paracetamol 500mg every 6 hours if temp > 38.5°C', 'See a doctor if fever lasts more than 3 days'],
+      chips: ['Book Appointment', 'Nearest PHC'],
     };
   }
 
-  // 5. Dengue / Malaria / Outbreak
-  if (/dengue|malaria|mosquit|डेंगू|मलेरिया|मच्छर|கொசு|டெங்கு/i.test(lower)) {
-    if (lang === 'हिन्दी') {
-      return {
-        role: 'ai',
-        text: `⚠️ डेंगू/मलेरिया चेतावनी: करंगल वार्ड में डेंगू के १४ मामले पाए गए हैं। बुखार होने पर तुरंत ${nearestPhc.name} (${phcDist} दूर) में रेपिड टेस्ट कराएं।`,
-        firstAidTips: [
-          'मच्छरदानी और मॉस्किटो रेपेलेंट का उपयोग करें',
-          'घर के आसपास पानी जमा न होने दें',
-          'शरीर को पूरी तरह ढकने वाले कपड़े पहनें',
-          'बिना डॉक्टर की सलाह के एस्पिरिन या इबुप्रोफेन न लें'
-        ],
-      };
-    }
-    if (lang === 'தமிழ்') {
-      return {
-        role: 'ai',
-        text: `⚠️ டெங்கு/மலேரியா எச்சரிக்கை: கருங்கல் பகுதியில் 14 டெங்கு பாதிப்புகள் கண்டறியப்பட்டுள்ளன. காய்ச்சல் இருந்தால் உடனே ${nearestPhc.name} (${phcDist} தொலைவில் உள்ளது) சென்று டெங்கு பரிசோதனை செய்து கொள்ளவும்.`,
-        firstAidTips: [
-          'கொசு வலை மற்றும் கொசு விரட்டிகளைப் பயன்படுத்தவும்',
-          'வீட்டைச் சுற்றி தண்ணீர் தேங்காமல் பார்த்துக் கொள்ளவும்',
-          'முழு கை சட்டைகளை அணியவும்',
-          'மருத்துவர் அறிவுரை இன்றி மாத்திரைகளை உட்கொள்ள வேண்டாம்'
-        ],
-      };
-    }
+  // Cough / cold
+  if (/cough|cold|throat|sneez|runny|congestion/.test(lower)) {
     return {
       role: 'ai',
-      text: `⚠️ DENGUE/MALARIA ALERT: There are active dengue cases reported in Karungal Ward. If you have high fever, visit ${nearestPhc.name} (${phcDist} away) for rapid diagnostic testing immediately.`,
-      firstAidTips: [
-        'Use mosquito nets and repellents at all times',
-        'Ensure no standing or stagnant water accumulates near your home',
-        'Wear long-sleeved clothing to prevent bites',
-        'Avoid self-medicating with Aspirin or Ibuprofen; seek medical advice',
-      ],
+      text: `For **cough and cold** symptoms, most cases are viral and improve with rest.\n\n**Self-care tips:**\n- Stay warm and drink warm fluids\n- Honey + ginger tea can help\n- Steam inhalation for congestion\n\nIf cough persists more than **7 days** or there is blood in sputum, visit **${nearestPhc.name}** (${phcDist}).`,
+      tips: ['Warm honey-ginger tea', 'Steam inhalation twice daily', 'Avoid cold drinks and ice cream', 'Wear a mask if in public'],
+      chips: ['Nearest PHC', 'More Tips'],
     };
   }
 
-  // 6. Default response
-  if (lang === 'हिन्दी') {
+  // Stomach / vomiting / diarrhea
+  if (/stomach|vomit|diarrhea|loose|belly|nausea|acidity/.test(lower)) {
     return {
       role: 'ai',
-      text: "मैं समझता हूं कि आप ठीक महसूस नहीं कर रहे हैं। कृपया अपने लक्षणों का थोड़ा और विस्तार से वर्णन करें। जैसे: यह समस्या कब से है? क्या आपको बुखार, बदन दर्द या सांस लेने में परेशानी हो रही है? मैं आपको सटीक सलाह दूंगा।",
+      text: `For **stomach issues**, staying hydrated is the most important step.\n\nDrink **ORS (Oral Rehydration Salt)** solution continuously.\n\nIf pain is **severe, sharp, or persistent** for more than 6 hours, visit **${nearestChc.name}** (${chcDist}) for full diagnostic support.`,
+      tips: ['ORS solution or coconut water every 30 minutes', 'Avoid spicy and heavy food', 'Eat light food: boiled rice, toast, bananas', 'Watch for signs of dehydration: dry mouth, dark urine'],
+      chips: ['ORS Guide', 'Nearest Clinic'],
     };
   }
-  if (lang === 'தமிழ்') {
+
+  // Headache
+  if (/head|migrain|migraine/.test(lower)) {
     return {
       role: 'ai',
-      text: "நீங்கள் நலமாக இல்லை என்பதை நான் உணர்கிறேன். உங்கள் அறிகுறிகளைப் பற்றி இன்னும் விரிவாகக் கூற முடியுமா? உதாரணமாக: இது எவ்வளவு நாட்களாக இருக்கிறது? காய்ச்சல், உடல் வலி அல்லது மூச்சு விடுவதில் சிரமம் உள்ளதா?",
+      text: `For **headache or migraine**, rest is the first step.\n\n**Try these:**\n- Lie down in a quiet, dark room\n- Apply a cold compress to your forehead\n- Drink plenty of water\n\nFor consultation, visit **${nearestPhc.name}** (${phcDist}) where physicians are currently available.`,
+      tips: ['Rest in a dark, quiet room', 'Apply cold or warm compress', 'Stay hydrated — drink water', 'Avoid bright screens and loud noise'],
+      chips: ['Book Appointment', 'Headache Types'],
     };
   }
+
+  // Dengue / malaria
+  if (/dengue|malaria|mosquito|bite/.test(lower)) {
+    return {
+      role: 'ai',
+      text: `⚠️ **Dengue / Malaria Alert** — There are active cases in the district.\n\nIf you have **high fever + body ache + joint pain**, visit **${nearestPhc.name}** (${phcDist}) immediately for a rapid diagnostic test.\n\nEarly detection is critical.`,
+      tips: ['Use mosquito nets and repellents', 'Eliminate standing water near home', 'Wear full-sleeve clothes', 'Do NOT take Aspirin or Ibuprofen — take Paracetamol only'],
+      chips: ['Get Tested', 'Prevention Guide'],
+    };
+  }
+
+  // Greet
+  if (/hello|hi |hey|namaste|வணக்கம்|नमस्ते/.test(lower)) {
+    const conditions = patient?.conditions.length
+      ? `\n\nI can see from your profile that you have **${patient.conditions.join(', ')}**. I can give you personalised advice anytime.`
+      : '';
+    return {
+      role: 'ai',
+      text: `Hello, **${name}**! 👋 I'm your CareGrid AI health assistant.${conditions}\n\nHow are you feeling today? You can describe your symptoms or ask any health question.`,
+      chips: ['I have fever', 'Headache', 'Stomach pain', 'Book appointment'],
+    };
+  }
+
+  // Default
   return {
     role: 'ai',
-    text: "I understand you are not feeling well. Can you please describe your symptoms in a bit more detail? For example: How long have you had this? Do you have a fever, body ache, or difficulty breathing? I will find the best recommendations for you.",
+    text: `I understand you're not feeling well, **${name}**.\n\nCould you please tell me more about your symptoms? For example:\n- **How long** have you had this?\n- Do you have **fever, pain, or difficulty breathing**?\n- Is it **getting worse**?\n\nThis will help me give you the most accurate advice.`,
+    chips: ['I have fever', 'Cough / Cold', 'Stomach pain', 'Emergency'],
   };
 }
 
-/* ─── Message Bubble ──────────────────────────────────────── */
+/* ── Streaming dots ─────────────────────────────────────── */
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-4 py-3">
+      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0">
+        <Sparkles className="w-4 h-4 text-white" />
+      </div>
+      <div className="flex gap-1 ml-2">
+        {[0, 0.18, 0.36].map((delay, i) => (
+          <motion.div key={i} className="w-2 h-2 rounded-full bg-gray-400"
+            animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 0.9, delay, repeat: Infinity }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Message bubble ─────────────────────────────────────── */
 function Bubble({ msg }: { msg: Message }) {
   const [tipsOpen, setTipsOpen] = useState(false);
   const isAi = msg.role === 'ai';
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10, scale: 0.97 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-3`}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+      className={`flex ${isAi ? 'justify-start' : 'justify-end'} mb-4 gap-2`}
     >
-      <div className={`max-w-[82%] ${isAi ? 'order-2' : ''}`}>
-        {/* Main bubble */}
-        <div className={`rounded-2xl px-4 py-3 shadow-sm ${
+      {/* AI avatar */}
+      {isAi && (
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shrink-0 mt-0.5">
+          <Sparkles className="w-4 h-4 text-white" />
+        </div>
+      )}
+
+      <div className={`max-w-[82%] ${isAi ? '' : ''}`}>
+        {/* Bubble */}
+        <div className={`rounded-2xl px-4 py-3 shadow-sm text-sm leading-relaxed ${
           msg.emergency
             ? 'bg-red-500 text-white rounded-tl-sm'
             : isAi
-              ? 'bg-white text-gray-800 rounded-tl-sm border border-gray-100'
+              ? 'bg-white text-gray-800 rounded-tl-sm border border-gray-100 shadow-sm'
               : 'bg-blue-600 text-white rounded-tr-sm'
         }`}>
-          <p className="text-sm leading-relaxed whitespace-pre-line">{msg.text}</p>
+          {isAi ? (
+            <div className="space-y-0.5">{renderMd(msg.text)}</div>
+          ) : (
+            <p>{msg.text}</p>
+          )}
+
+          {/* Emergency call button */}
           {msg.emergency && (
             <a href="tel:108">
-              <motion.div
-                whileTap={{ scale: 0.96 }}
-                className="mt-3 bg-white text-red-600 font-black text-sm py-2.5 rounded-xl
-                  flex items-center justify-center gap-2"
+              <motion.div whileTap={{ scale: 0.96 }}
+                className="mt-3 bg-white text-red-600 font-black text-sm py-3 rounded-xl flex items-center justify-center gap-2"
               >
                 <Phone className="w-4 h-4" />
-                CALL 108
+                📞 CALL 108 NOW
               </motion.div>
             </a>
           )}
         </div>
-        {/* First Aid Tips */}
-        {msg.firstAidTips && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            className="mt-2 bg-green-50 border border-green-100 rounded-2xl overflow-hidden"
-          >
-            <button
-              onClick={() => setTipsOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 text-green-700"
+
+        {/* Tips panel */}
+        {msg.tips && msg.tips.length > 0 && (
+          <div className="mt-2 bg-green-50 border border-green-100 rounded-2xl overflow-hidden">
+            <button onClick={() => setTipsOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-green-700"
             >
-              <span className="text-xs font-bold">💊 First Aid Tips</span>
+              <span className="text-xs font-bold">💊 Quick Tips</span>
               {tipsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
             <AnimatePresence>
               {tipsOpen && (
-                <motion.ul
-                  initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }}
-                  className="px-4 pb-3 space-y-1.5 overflow-hidden"
+                <motion.ul initial={{ height: 0 }} animate={{ height: 'auto' }}
+                  exit={{ height: 0 }} className="px-4 pb-3 space-y-1.5 overflow-hidden"
                 >
-                  {msg.firstAidTips.map((tip, i) => (
+                  {msg.tips.map((tip, i) => (
                     <li key={i} className="text-xs text-green-700 flex items-start gap-2">
-                      <span className="text-green-400 mt-0.5">•</span>
-                      {tip}
+                      <span className="text-green-500 mt-0.5 shrink-0">✓</span>{tip}
                     </li>
                   ))}
                 </motion.ul>
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         )}
       </div>
     </motion.div>
   );
 }
 
-/* ─── Typing Indicator ────────────────────────────────────── */
-function TypingIndicator() {
-  return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex justify-start mb-3">
-      <div className="bg-white border border-gray-100 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex gap-1.5 items-center">
-        {[0, 0.2, 0.4].map((delay, i) => (
-          <motion.div
-            key={i}
-            className="w-2 h-2 bg-gray-400 rounded-full"
-            animate={{ y: [0, -4, 0] }}
-            transition={{ duration: 0.6, delay, repeat: Infinity }}
-          />
-        ))}
-      </div>
-    </motion.div>
-  );
-}
+/* ── Quick chips ─────────────────────────────────────────── */
+const DEFAULT_CHIPS = ['I have fever', 'Headache', 'Cough', 'Stomach pain', '🚨 Emergency'];
 
-const WELCOME: Message = {
-  id: 'welcome',
-  role: 'ai',
-  text: "Hello! I'm your health assistant. You can describe your symptoms in Hindi, Tamil, or English. I'll help you find the right care. 🏥",
-};
-
-const QUICK_CHIPS = ['Fever', 'Headache', 'Cough', 'Stomach Pain', 'Emergency'];
-
-/* ─── Chat Page ───────────────────────────────────────────── */
+/* ── Main Chat ───────────────────────────────────────────── */
 export default function PatientChat() {
   const { t, lang } = useTranslation();
-  const [messages, setMessages] = useState<Message[]>([WELCOME]);
+  const patient = getPatient();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const userPos = useMemo(() => {
-    const saved = localStorage.getItem('user_pos');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
-    }
-    return null;
+    try { const s = localStorage.getItem('user_pos'); return s ? JSON.parse(s) : null; } catch { return null; }
+  }, []);
+
+  // Determine language code for AI engine
+  const langCode = lang.toLowerCase().startsWith('ta') || lang === 'தமிழ்' ? 'ta'
+    : lang.toLowerCase().startsWith('hi') || lang === 'हिन्दी' ? 'hi' : 'en';
+
+  // Welcome message based on patient profile
+  useEffect(() => {
+    const name = patient?.name?.split(' ')[0] ?? 'there';
+    const greeting: Message = {
+      id: 'welcome',
+      role: 'ai',
+      text: `Hello, **${name}**! 👋 I'm CareGrid AI, your personal health assistant.\n\nDescribe your symptoms and I'll help you find the best care — or ask me anything about your health.`,
+      chips: DEFAULT_CHIPS,
+    };
+    setMessages([greeting]);
   }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typing]);
 
-  const sendMessage = (text: string) => {
+  const lastAiChips = useMemo(() => {
+    const last = [...messages].reverse().find(m => m.role === 'ai' && m.chips);
+    return last?.chips ?? DEFAULT_CHIPS;
+  }, [messages]);
+
+  const send = (text: string) => {
     if (!text.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text };
+    const userMsg: Message = { id: `u-${Date.now()}`, role: 'user', text: text.trim() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
     setTyping(true);
+
+    // Simulate Gemini-like thinking delay (0.8s–1.4s)
+    const delay = 800 + Math.random() * 600;
     setTimeout(() => {
       setTyping(false);
-      const aiMsg: Message = { 
-        id: (Date.now() + 1).toString(), 
-        ...getAiResponse(text, lang as Language, userPos) 
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    }, 1200);
+      const response = getAiResponse(text, langCode, userPos, patient);
+      setMessages(prev => [...prev, { id: `a-${Date.now()}`, ...response }]);
+    }, delay);
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-3.5 flex items-center gap-3 flex-shrink-0">
-        <div className="relative">
-          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-            <span className="text-white text-sm font-bold">AI</span>
-          </div>
-          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-400 rounded-full border-2 border-white" />
+    <div className="flex flex-col bg-gray-50" style={{ height: 'calc(100vh - 68px)' }}>
+
+      {/* Header — Gemini style */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shrink-0 shadow-sm">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center relative">
+          <Sparkles className="w-5 h-5 text-white" />
+          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white" />
         </div>
-        <div>
-          <p className="font-bold text-gray-900 text-sm">CareGrid AI Assistant</p>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full">
-              {t('geminiPowered', 'Gemini-powered')}
+        <div className="flex-1">
+          <p className="font-bold text-gray-900 text-sm">CareGrid AI</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] text-green-600 font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />
+              Active
             </span>
-            <span className="text-[10px] bg-green-50 text-green-600 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-              <WifiOff className="w-2.5 h-2.5" /> {t('worksOffline', 'Works offline')}
-            </span>
+            <span className="text-gray-300 text-[10px]">·</span>
+            <span className="text-[10px] text-gray-500">Health assistant</span>
           </div>
         </div>
+        <span className="text-[10px] bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold px-2.5 py-1 rounded-full">
+          Gemini AI
+        </span>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.map(m => {
-          const text = m.id === 'welcome' ? t('chatGreeting') : m.text;
-          return <Bubble key={m.id} msg={{ ...m, text }} />;
-        })}
-        {typing && <TypingIndicator />}
+        {messages.map(m => <Bubble key={m.id} msg={m} />)}
+        {typing && <TypingDots />}
         <div ref={endRef} />
       </div>
 
       {/* Quick chips */}
-      <div className="px-4 py-2 flex gap-2 overflow-x-auto bg-white border-t border-gray-100 flex-shrink-0">
-        {QUICK_CHIPS.map(chip => {
-          const chipLabel = chip === 'Fever' ? t('fever', 'Fever') :
-                            chip === 'Headache' ? t('headache', 'Headache') :
-                            chip === 'Cough' ? t('cough', 'Cough') :
-                            chip === 'Stomach Pain' ? t('stomachPain', 'Stomach Pain') :
-                            t('emergency', 'Emergency');
-          return (
-            <motion.button
-              key={chip}
-              whileTap={{ scale: 0.94 }}
-              onClick={() => sendMessage(chip)}
-              className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                chip === 'Emergency'
-                  ? 'bg-red-50 text-red-600 border-red-200'
-                  : 'bg-blue-50 text-blue-600 border-blue-100'
-              }`}
-            >
-              {chipLabel}
-            </motion.button>
-          );
-        })}
+      <div className="px-4 py-2 flex gap-2 overflow-x-auto bg-white border-t border-gray-100 shrink-0" style={{ scrollbarWidth: 'none' }}>
+        {lastAiChips.map(chip => (
+          <motion.button key={chip} whileTap={{ scale: 0.94 }} onClick={() => send(chip)}
+            className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              chip.includes('Emergency') || chip.includes('🚨')
+                ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'
+            }`}
+          >
+            {chip}
+          </motion.button>
+        ))}
       </div>
 
-      {/* Input bar */}
-      <div className="px-4 py-3 bg-white flex items-end gap-3 flex-shrink-0">
-        <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-3 flex items-end gap-2">
+      {/* Input bar — Gemini style */}
+      <div className="px-4 py-3 bg-white shrink-0">
+        <div className="flex items-end gap-2 bg-gray-100 rounded-2xl px-4 py-2 border border-transparent focus-within:border-blue-300 focus-within:bg-white transition-all">
           <textarea
-            className="flex-1 bg-transparent text-sm text-gray-800 outline-none resize-none placeholder-gray-400 max-h-24"
-            placeholder={t('chatPlaceholder', 'Describe your symptoms...')}
+            ref={inputRef}
             rows={1}
+            className="flex-1 bg-transparent text-sm text-gray-800 outline-none resize-none placeholder-gray-400 max-h-28 leading-relaxed"
+            placeholder={t('chatPlaceholder', 'Ask me anything about your health…')}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                sendMessage(input);
+                send(input);
               }
             }}
           />
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => sendMessage(input)}
-            className="text-blue-600 flex-shrink-0"
+            onClick={() => send(input)}
+            disabled={!input.trim() || typing}
+            className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+              input.trim() && !typing
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-200 text-gray-400'
+            }`}
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </motion.button>
         </div>
+        <p className="text-center text-[10px] text-gray-400 mt-1.5">
+          AI advice is for guidance only. Always consult a doctor for medical decisions.
+        </p>
       </div>
     </div>
   );

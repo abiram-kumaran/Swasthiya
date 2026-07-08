@@ -1,151 +1,125 @@
-import { useState } from 'react';
+/**
+ * Patient Queue Management — Clinic Staff Portal
+ * Full offline-resilient queue with token calling, registration,
+ * priority sorting, patient details, and stats.
+ */
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import {
-  Search, Plus, X, ChevronRight, Phone, MapPin,
-  Mic, User, ArrowLeft, Activity, Heart, AlertCircle,
+  Search, Plus, X, Phone, MapPin, AlertCircle,
+  User, ArrowLeft, Check, Mic, ChevronRight,
+  Users, Clock, Volume2, SkipForward, RefreshCw,
 } from 'lucide-react';
 import { PATIENTS, type Patient } from '@/lib/data';
 
-type QueueTab = 'queue' | 'registered' | 'history';
-
-const PRIORITY_STYLE: Record<Patient['priority'], { badge: string; token: string; order: number }> = {
-  emergency: { badge: 'bg-red-100 text-red-700 border-red-200',     token: 'bg-red-500',    order: 0 },
-  senior:    { badge: 'bg-orange-100 text-orange-700 border-orange-200', token: 'bg-orange-400', order: 1 },
-  pregnant:  { badge: 'bg-purple-100 text-purple-700 border-purple-200', token: 'bg-purple-500', order: 2 },
-  child:     { badge: 'bg-blue-100 text-blue-700 border-blue-200',   token: 'bg-blue-500',   order: 3 },
-  normal:    { badge: 'bg-gray-100 text-gray-600 border-gray-200',   token: 'bg-gray-400',   order: 4 },
+/* ── Priority config ─────────────────────────────────────── */
+const P_STYLE: Record<Patient['priority'], { badge: string; token: string; order: number; label: string }> = {
+  emergency: { badge:'bg-red-100 text-red-700 border-red-200',       token:'bg-red-500',    order:0, label:'Emergency' },
+  senior:    { badge:'bg-orange-100 text-orange-700 border-orange-200', token:'bg-orange-400', order:1, label:'Senior'    },
+  pregnant:  { badge:'bg-purple-100 text-purple-700 border-purple-200', token:'bg-purple-500', order:2, label:'Pregnant'  },
+  child:     { badge:'bg-blue-100 text-blue-700 border-blue-200',     token:'bg-blue-500',   order:3, label:'Child'     },
+  normal:    { badge:'bg-gray-100 text-gray-600 border-gray-200',     token:'bg-gray-400',   order:4, label:'Normal'    },
 };
 
-function PatientDetailSheet({ patient, onClose }: { patient: Patient; onClose: () => void }) {
-  return (
-    <motion.div
-      initial={{ x: '100%' }}
-      animate={{ x: 0 }}
-      exit={{ x: '100%' }}
-      transition={{ type: 'tween', ease: 'easeInOut', duration: 0.28 }}
-      className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto"
-    >
-      <div className="gradient-gov text-white px-4 pt-5 pb-4 rounded-b-2xl">
-        <button onClick={onClose} className="flex items-center gap-1.5 text-blue-200 text-xs mb-3">
-          <ArrowLeft className="w-3.5 h-3.5" /> Back
-        </button>
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-            <User className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold">{patient.name}</h2>
-            <p className="text-blue-200 text-[11px]">{patient.age}y · {patient.gender === 'M' ? 'Male' : 'Female'} · {patient.bloodGroup}</p>
-            <p className="text-[10px] text-blue-300 mt-0.5">ABHA: {patient.abhaId}</p>
-          </div>
-        </div>
-      </div>
+/* ── Queue store (localStorage for offline) ──────────────── */
+const QUEUE_KEY = 'caregrid_queue_v1';
 
-      <div className="px-4 pt-4 pb-6 space-y-3">
-        {/* Contact */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Contact</p>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs text-gray-700">
-              <Phone className="w-3.5 h-3.5 text-gray-400" /> {patient.phone}
-            </div>
-            <div className="flex items-center gap-2 text-xs text-gray-700">
-              <MapPin className="w-3.5 h-3.5 text-gray-400" /> {patient.village}
-            </div>
-          </div>
-        </div>
-
-        {/* Vitals */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Vitals</p>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'BP', value: '120/80' },
-              { label: 'Temp', value: '98.6°F' },
-              { label: 'SpO₂', value: '98%' },
-            ].map(v => (
-              <div key={v.label} className="bg-gray-50 rounded-lg p-2 text-center">
-                <p className="text-[9px] text-gray-400">{v.label}</p>
-                <p className="text-sm font-bold text-gray-900 mt-0.5">{v.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Conditions */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Conditions</p>
-          <div className="flex flex-wrap gap-1.5">
-            {patient.conditions.map(c => (
-              <span key={c} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full border border-blue-100">{c}</span>
-            ))}
-          </div>
-        </div>
-
-        {/* Allergies */}
-        {patient.allergies.length > 0 && (
-          <div className="bg-red-50 rounded-xl border border-red-100 p-3">
-            <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-2 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> Allergies
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {patient.allergies.map(a => (
-                <span key={a} className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full">{a}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Visit History */}
-        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-2">Visit History</p>
-          <div className="space-y-2">
-            {[
-              { date: patient.lastVisit, note: 'Routine checkup. BP normal.' },
-              { date: 'Jun 15',          note: 'Follow-up consultation.' },
-            ].map((v, i) => (
-              <div key={i} className="flex gap-2.5 text-xs">
-                <span className="text-gray-400 shrink-0 w-16">{v.date}</span>
-                <span className="text-gray-700">{v.note}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
+interface QueuePatient extends Patient {
+  registeredAt: string;
+  calledAt: string | null;
+  status: 'waiting' | 'called' | 'consulting' | 'done' | 'skipped';
 }
 
-function RegisterModal({ onClose }: { onClose: () => void }) {
+function loadQueue(): QueuePatient[] {
+  try {
+    const s = localStorage.getItem(QUEUE_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  // Seed from mock PATIENTS on first load
+  return PATIENTS.filter(p => p.tokenNumber !== null).map(p => ({
+    ...p,
+    registeredAt: new Date(Date.now() - Math.random() * 3600000).toISOString(),
+    calledAt: null,
+    status: 'waiting',
+  }));
+}
+
+function saveQueue(q: QueuePatient[]) {
+  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
+}
+
+let nextToken = 20;
+
+/* ── Register modal ──────────────────────────────────────── */
+function RegisterModal({ onClose, onRegister }: { onClose: () => void; onRegister: (p: QueuePatient) => void }) {
+  const [name,     setName]     = useState('');
+  const [age,      setAge]      = useState('');
+  const [phone,    setPhone]    = useState('');
+  const [village,  setVillage]  = useState('');
+  const [gender,   setGender]   = useState<'M'|'F'|'Other'>('M');
+  const [priority, setPriority] = useState<Patient['priority']>('normal');
+  const [symptoms, setSymptoms] = useState('');
+  const [recording, setRecording] = useState(false);
+
+  function submit() {
+    if (!name.trim()) { toast.error('Patient name is required'); return; }
+    if (!age || isNaN(Number(age))) { toast.error('Valid age is required'); return; }
+    const token = ++nextToken;
+    const newPt: QueuePatient = {
+      id: `q-${Date.now()}`,
+      name: name.trim(),
+      abhaId: '—',
+      age: Number(age),
+      gender: gender === 'M' ? 'M' : 'F',
+      bloodGroup: '—',
+      phone: phone.trim() || '—',
+      village: village.trim() || '—',
+      conditions: symptoms.trim() ? [symptoms.trim()] : [],
+      allergies: [],
+      lastVisit: 'Today',
+      tokenNumber: token,
+      priority,
+      registeredAt: new Date().toISOString(),
+      calledAt: null,
+      status: 'waiting',
+    };
+    onRegister(newPt);
+    toast.success(`Token #${token} assigned — ${name.trim()}`, { description: `Priority: ${priority}` });
+    onClose();
+  }
+
+  function toggleRecord() {
+    setRecording(r => !r);
+    if (!recording) {
+      setTimeout(() => {
+        setSymptoms('Fever for 3 days, mild cough, body ache');
+        setRecording(false);
+        toast.success('Voice input captured');
+      }, 2000);
+    }
+  }
+
   return (
-    <motion.div
-      initial={{ y: '100%' }}
-      animate={{ y: 0 }}
-      exit={{ y: '100%' }}
-      transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-      className="fixed inset-x-0 bottom-0 z-50 max-w-[480px] mx-auto bg-white rounded-t-2xl shadow-2xl"
-    >
+    <motion.div initial={{ y:'100%' }} animate={{ y:0 }} exit={{ y:'100%' }}
+      transition={{ type:'tween', ease:'easeInOut', duration:0.3 }}
+      className="fixed inset-x-0 bottom-0 z-50 max-w-[480px] mx-auto bg-white rounded-t-2xl shadow-2xl">
       <div className="px-4 pt-4 pb-2 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="font-bold text-sm text-gray-900">Register Patient</h3>
-        <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100">
-          <X className="w-4 h-4 text-gray-500" />
-        </button>
+        <h3 className="font-bold text-sm text-gray-900">Register New Patient</h3>
+        <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100"><X className="w-4 h-4 text-gray-500"/></button>
       </div>
-      <div className="px-4 py-4 space-y-3 max-h-[70vh] overflow-y-auto pb-8">
+      <div className="px-4 py-4 space-y-3 max-h-[75vh] overflow-y-auto pb-8">
         {[
-          { label: 'Full Name', placeholder: 'Enter patient name', type: 'text' },
-          { label: 'Age',       placeholder: 'Age in years',       type: 'number' },
-          { label: 'Phone',     placeholder: '+91 XXXXX XXXXX',    type: 'tel' },
-          { label: 'Village',   placeholder: 'Village / Town',     type: 'text' },
+          { label:'Full Name *',  value:name,    setter:setName,    placeholder:'Patient full name',   type:'text'   },
+          { label:'Age *',        value:age,     setter:setAge,     placeholder:'Age in years',        type:'number' },
+          { label:'Phone',        value:phone,   setter:setPhone,   placeholder:'+91 XXXXX XXXXX',     type:'tel'    },
+          { label:'Village/Area', value:village, setter:setVillage, placeholder:'Village or locality', type:'text'   },
         ].map(f => (
           <div key={f.label}>
             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{f.label}</label>
-            <input
-              type={f.type}
+            <input type={f.type} value={f.value} onChange={e => f.setter(e.target.value)}
               placeholder={f.placeholder}
-              className="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              className="w-full mt-1 border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"/>
           </div>
         ))}
 
@@ -153,9 +127,10 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
         <div>
           <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Gender</label>
           <div className="flex gap-2 mt-1">
-            {['Male', 'Female', 'Other'].map(g => (
-              <button key={g} className="flex-1 py-2 border border-gray-200 rounded-lg text-xs text-gray-700 hover:border-blue-400 hover:text-blue-700 transition-colors">
-                {g}
+            {(['M','F','Other'] as const).map(g => (
+              <button key={g} onClick={() => setGender(g as 'M'|'F'|'Other')}
+                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${gender===g?'bg-blue-600 text-white border-blue-600':'border-gray-200 text-gray-700 hover:border-blue-300'}`}>
+                {g === 'M' ? 'Male' : g === 'F' ? 'Female' : 'Other'}
               </button>
             ))}
           </div>
@@ -165,193 +140,276 @@ function RegisterModal({ onClose }: { onClose: () => void }) {
         <div>
           <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Priority</label>
           <div className="flex flex-wrap gap-1.5 mt-1">
-            {(['normal', 'senior', 'pregnant', 'child', 'emergency'] as const).map(p => (
-              <button key={p} className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border capitalize ${PRIORITY_STYLE[p].badge}`}>
-                {p}
+            {(Object.keys(P_STYLE) as Patient['priority'][]).map(p => (
+              <button key={p} onClick={() => setPriority(p)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-bold border capitalize transition-all ${priority===p?'ring-2 ring-blue-500 '+P_STYLE[p].badge:P_STYLE[p].badge+' opacity-60'}`}>
+                {P_STYLE[p].label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Symptoms */}
+        {/* Symptoms + voice */}
         <div>
-          <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Symptoms</label>
+          <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">Chief Complaint / Symptoms</label>
           <div className="flex gap-2 mt-1">
-            <input
-              placeholder="Describe symptoms..."
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={() => toast.info('Voice input active (simulated)')}
-              className="px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-600 hover:bg-blue-100"
-            >
-              <Mic className="w-4 h-4" />
+            <input value={symptoms} onChange={e => setSymptoms(e.target.value)}
+              placeholder="e.g. Fever, cough for 3 days..."
+              className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+            <button onClick={toggleRecord}
+              className={`px-3 py-2 rounded-xl border transition-colors ${recording?'bg-red-500 text-white border-red-500 animate-pulse':'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'}`}>
+              <Mic className="w-4 h-4"/>
             </button>
           </div>
+          {recording && <p className="text-[10px] text-red-500 mt-1 animate-pulse">🎤 Recording… speak clearly</p>}
         </div>
 
-        <button
-          onClick={() => { toast.success('Patient registered successfully!', { description: 'Token assigned: #24' }); onClose(); }}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors"
-        >
-          Register &amp; Assign Token
+        <button onClick={submit}
+          className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-2xl transition-colors flex items-center justify-center gap-2">
+          <Plus className="w-4 h-4"/> Register & Assign Token
         </button>
       </div>
     </motion.div>
   );
 }
 
-export default function FrontlinePatients() {
-  const [tab, setTab] = useState<QueueTab>('queue');
-  const [search, setSearch] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const [showRegister, setShowRegister] = useState(false);
-
-  const queuePatients = PATIENTS.filter(p => p.tokenNumber !== null)
-    .sort((a, b) => (PRIORITY_STYLE[a.priority].order - PRIORITY_STYLE[b.priority].order));
-
-  const displayPatients = queuePatients.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase())
+/* ── Patient detail sheet ────────────────────────────────── */
+function PatientSheet({ patient, onClose }: { patient: QueuePatient; onClose: () => void }) {
+  return (
+    <motion.div initial={{ x:'100%' }} animate={{ x:0 }} exit={{ x:'100%' }}
+      transition={{ type:'tween', ease:'easeInOut', duration:0.26 }}
+      className="fixed inset-0 z-50 bg-gray-50 overflow-y-auto max-w-[480px] mx-auto">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white px-4 pt-5 pb-4 rounded-b-2xl">
+        <button onClick={onClose} className="flex items-center gap-1.5 text-blue-200 text-xs mb-3 hover:text-white">
+          <ArrowLeft className="w-3.5 h-3.5"/> Back to Queue
+        </button>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center font-black text-white text-base">
+            {patient.name.split(' ').map(n => n[0]).join('').slice(0,2)}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold">{patient.name}</h2>
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border capitalize ${P_STYLE[patient.priority].badge}`}>{P_STYLE[patient.priority].label}</span>
+            </div>
+            <p className="text-blue-200 text-[11px]">{patient.age}y · {patient.gender==='M'?'Male':'Female'} · {patient.bloodGroup}</p>
+            {patient.abhaId !== '—' && <p className="text-[10px] text-blue-300 mt-0.5 font-mono">ABHA: {patient.abhaId}</p>}
+          </div>
+        </div>
+      </div>
+      <div className="px-4 pt-4 pb-6 space-y-3">
+        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Contact</p>
+          <div className="space-y-1.5 text-xs text-gray-700">
+            <div className="flex items-center gap-2"><Phone className="w-3.5 h-3.5 text-gray-400"/>{patient.phone}</div>
+            <div className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-gray-400"/>{patient.village}</div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Chief Complaint</p>
+          {patient.conditions.length > 0
+            ? <div className="flex flex-wrap gap-1.5">{patient.conditions.map(c => <span key={c} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full border border-blue-100">{c}</span>)}</div>
+            : <p className="text-xs text-gray-400">Not recorded</p>}
+        </div>
+        {patient.allergies.length > 0 && (
+          <div className="bg-red-50 rounded-xl border border-red-100 p-3">
+            <p className="text-[10px] font-bold text-red-500 uppercase mb-2 flex items-center gap-1"><AlertCircle className="w-3 h-3"/>Allergies</p>
+            <div className="flex flex-wrap gap-1.5">{patient.allergies.map(a => <span key={a} className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] rounded-full">{a}</span>)}</div>
+          </div>
+        )}
+        <div className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm">
+          <p className="text-[10px] font-bold text-gray-400 uppercase mb-2">Token Info</p>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div><p className="text-[9px] text-gray-400">Token</p><p className="font-bold text-gray-800">#{patient.tokenNumber}</p></div>
+            <div><p className="text-[9px] text-gray-400">Status</p><p className="font-bold text-gray-800 capitalize">{patient.status}</p></div>
+            <div><p className="text-[9px] text-gray-400">Registered</p><p className="font-semibold text-gray-700">{new Date(patient.registeredAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</p></div>
+            <div><p className="text-[9px] text-gray-400">Last Visit</p><p className="font-semibold text-gray-700">{patient.lastVisit}</p></div>
+          </div>
+        </div>
+      </div>
+    </motion.div>
   );
+}
+
+/* ── Queue card ──────────────────────────────────────────── */
+function QueueCard({ patient, pos, onCall, onSkip, onDone, onView }: {
+  patient: QueuePatient; pos: number;
+  onCall: () => void; onSkip: () => void; onDone: () => void; onView: () => void;
+}) {
+  const ps = P_STYLE[patient.priority];
+  const isCalled = patient.status === 'called';
+
+  return (
+    <motion.div layout initial={{ opacity:0,y:8 }} animate={{ opacity:1,y:0 }} exit={{ opacity:0,x:-60,scale:0.96 }}
+      className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${isCalled?'border-blue-300 shadow-blue-100':'border-gray-100'}`}>
+      {isCalled && <div className="h-0.5 bg-blue-500 w-full animate-pulse"/>}
+      <div className="flex items-center gap-3 p-3">
+        {/* Position + token */}
+        <div className="flex flex-col items-center shrink-0">
+          <span className="text-[9px] text-gray-400 font-semibold">#{pos + 1}</span>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center mt-0.5 ${ps.token}`}>
+            <span className="text-white text-[11px] font-black">#{patient.tokenNumber}</span>
+          </div>
+        </div>
+        {/* Info */}
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={onView}>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-xs font-bold text-gray-900">{patient.name}</p>
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border capitalize ${ps.badge}`}>{ps.label}</span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-0.5">{patient.age}y · {patient.gender==='M'?'M':'F'} · {patient.village}</p>
+          {patient.conditions.length > 0 && (
+            <p className="text-[10px] text-gray-600 mt-0.5 font-medium truncate">{patient.conditions.join(', ')}</p>
+          )}
+          <div className="flex items-center gap-1 mt-0.5">
+            <Clock className="w-2.5 h-2.5 text-gray-300"/>
+            <span className="text-[9px] text-gray-400">{new Date(patient.registeredAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span>
+            {isCalled && <span className="text-[9px] text-blue-600 font-bold ml-1">📢 CALLED</span>}
+          </div>
+        </div>
+        {/* Actions */}
+        <div className="flex flex-col gap-1.5 shrink-0">
+          <button onClick={onCall}
+            className={`flex items-center gap-1 text-[10px] font-bold px-2.5 py-1.5 rounded-xl transition-colors ${isCalled?'bg-green-600 text-white hover:bg-green-700':'bg-blue-600 text-white hover:bg-blue-700'}`}>
+            {isCalled ? <><Check className="w-3 h-3"/>Done</> : <><Volume2 className="w-3 h-3"/>Call</>}
+          </button>
+          {isCalled
+            ? <button onClick={onDone} className="text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200">Done</button>
+            : <button onClick={onSkip} className="text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1"><SkipForward className="w-3 h-3"/>Skip</button>}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+/* ── Main page ───────────────────────────────────────────── */
+export default function FrontlinePatients() {
+  const [queue, setQueue]           = useState<QueuePatient[]>(loadQueue);
+  const [search, setSearch]         = useState('');
+  const [tab, setTab]               = useState<'waiting'|'called'|'done'>('waiting');
+  const [showRegister, setShowRegister] = useState(false);
+  const [detail, setDetail]         = useState<QueuePatient | null>(null);
+  const [online, setOnline]         = useState(navigator.onLine);
+
+  useEffect(() => {
+    const on = () => setOnline(true); const off = () => setOnline(false);
+    window.addEventListener('online', on); window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+
+  function mutate(fn: (q: QueuePatient[]) => QueuePatient[]) {
+    setQueue(prev => { const next = fn(prev); saveQueue(next); return next; });
+  }
+
+  function callPatient(id: string) {
+    const pt = queue.find(p => p.id === id);
+    if (!pt) return;
+    mutate(q => q.map(p => p.id === id ? { ...p, status: p.status === 'called' ? 'consulting' : 'called', calledAt: new Date().toISOString() } : p));
+    if (pt.status !== 'called') toast.success(`📢 Calling Token #${pt.tokenNumber} — ${pt.name}`, { description: 'Please proceed to OPD cabin' });
+    else toast.success(`✅ ${pt.name} — consultation started`);
+  }
+
+  function skipPatient(id: string) {
+    const pt = queue.find(p => p.id === id);
+    mutate(q => q.map(p => p.id === id ? { ...p, status: 'skipped' } : p));
+    toast.info(`Token #${pt?.tokenNumber} skipped`, { description: 'Moved to end of queue' });
+  }
+
+  function donePatient(id: string) {
+    const pt = queue.find(p => p.id === id);
+    mutate(q => q.map(p => p.id === id ? { ...p, status: 'done' } : p));
+    toast.success(`${pt?.name} — consultation complete`);
+  }
+
+  function addPatient(p: QueuePatient) {
+    mutate(q => { const next = [...q, p]; next.sort((a,b) => P_STYLE[a.priority].order - P_STYLE[b.priority].order); return next; });
+  }
+
+  const waiting = queue.filter(p => p.status === 'waiting').sort((a,b) => P_STYLE[a.priority].order - P_STYLE[b.priority].order);
+  const called  = queue.filter(p => p.status === 'called' || p.status === 'consulting');
+  const done    = queue.filter(p => p.status === 'done' || p.status === 'skipped');
+  const allSearch = (list: QueuePatient[]) => list.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || String(p.tokenNumber).includes(search));
+
+  const activeList = tab === 'waiting' ? allSearch(waiting) : tab === 'called' ? allSearch(called) : allSearch(done);
 
   return (
     <div className="pb-4">
-      {/* Header */}
-      <div className="gradient-gov text-white px-4 pt-5 pb-4 rounded-b-2xl">
+      <div className="bg-gradient-to-br from-blue-600 to-blue-800 text-white px-4 pt-5 pb-4 rounded-b-2xl">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h1 className="text-sm font-bold">Patients</h1>
-            <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              {queuePatients.length} waiting
-            </span>
+            <h1 className="text-sm font-bold">Patient Queue</h1>
+            {waiting.length > 0 && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{waiting.length} waiting</span>}
+            {!online && <span className="bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">Offline</span>}
           </div>
-          <button
-            onClick={() => setShowRegister(true)}
-            className="flex items-center gap-1 bg-white/15 border border-white/30 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Register
+          <button onClick={() => setShowRegister(true)}
+            className="flex items-center gap-1.5 bg-white/15 border border-white/30 text-white text-xs font-semibold px-2.5 py-1.5 rounded-xl">
+            <Plus className="w-3.5 h-3.5"/> Register
           </button>
         </div>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-300" />
-          <input
-            type="text"
-            placeholder="Search patients..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-white/15 border border-white/20 text-white placeholder:text-blue-300 text-xs rounded-lg pl-8 pr-3 py-2 outline-none"
-          />
+        <div className="relative mb-3">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-300"/>
+          <input type="text" placeholder="Search by name or token…" value={search} onChange={e => setSearch(e.target.value)}
+            className="w-full bg-white/15 border border-white/20 text-white placeholder:text-blue-300 text-xs rounded-xl pl-8 pr-3 py-2.5 outline-none focus:ring-1 focus:ring-white/50"/>
+        </div>
+        {/* Summary */}
+        <div className="grid grid-cols-3 gap-2">
+          {[{ label:'Waiting', value:waiting.length, color:'text-white' },{ label:'Called', value:called.length, color:'text-blue-200' },{ label:'Done', value:done.length, color:'text-green-300' }].map(s => (
+            <div key={s.label} className="bg-white/10 border border-white/15 rounded-xl p-2 text-center">
+              <p className={`text-lg font-black ${s.color}`}>{s.value}</p>
+              <p className="text-[9px] text-blue-200">{s.label}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="px-4 pt-3">
-        {/* Tabs */}
-        <div className="flex gap-1 bg-gray-100 rounded-lg p-1 mb-3">
-          {(['queue', 'registered', 'history'] as QueueTab[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${
-                tab === t ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500'
-              }`}
-            >
-              {t}
-            </button>
+      <div className="px-4 pt-3 space-y-3">
+        {/* Priority legend */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth:'none' }}>
+          {(Object.entries(P_STYLE) as [Patient['priority'], typeof P_STYLE[Patient['priority']]][]).map(([k,v]) => (
+            <span key={k} className={`shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full border ${v.badge}`}>{v.label}</span>
           ))}
         </div>
 
-        {/* Queue */}
-        {tab === 'queue' && (
-          <AnimatePresence>
-            <div className="space-y-2">
-              {displayPatients.map((patient, i) => {
-                const ps = PRIORITY_STYLE[patient.priority];
-                return (
-                  <motion.div
-                    key={patient.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.05 }}
-                    className="bg-white rounded-xl border border-gray-100 p-3 shadow-sm"
-                  >
-                    <div className="flex items-start gap-2.5">
-                      {/* Token */}
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${ps.token}`}>
-                        <span className="text-white text-[11px] font-bold">#{patient.tokenNumber}</span>
-                      </div>
+        {/* Tabs */}
+        <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+          {([['waiting','Waiting'],['called','Called'],['done','Done']] as const).map(([k,l]) => (
+            <button key={k} onClick={() => setTab(k)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab===k?'bg-white text-blue-700 shadow-sm':'text-gray-500'}`}>{l}</button>
+          ))}
+        </div>
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-bold text-gray-900">{patient.name}</p>
-                          <span className="text-[10px] text-gray-400">{patient.age}y · {patient.gender === 'M' ? 'M' : 'F'}</span>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border capitalize ${ps.badge}`}>
-                            {patient.priority}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {patient.conditions.slice(0, 2).map(c => (
-                            <span key={c} className="text-[9px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{c}</span>
-                          ))}
-                          {patient.conditions.length > 2 && (
-                            <span className="text-[9px] text-gray-400">+{patient.conditions.length - 2}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        <button
-                          onClick={() => toast.success(`Calling Token #${patient.tokenNumber}`, { description: `${patient.name} — Please proceed to OPD` })}
-                          className="text-[10px] font-semibold px-2 py-1 bg-blue-600 text-white rounded-lg"
-                        >
-                          Call
-                        </button>
-                        <button
-                          onClick={() => setSelectedPatient(patient)}
-                          className="text-[10px] font-semibold px-2 py-1 bg-gray-100 text-gray-700 rounded-lg"
-                        >
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-              {displayPatients.length === 0 && (
-                <div className="text-center py-10 text-gray-400 text-xs">No patients in queue</div>
-              )}
+        {/* Queue list */}
+        <AnimatePresence mode="popLayout">
+          {activeList.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="w-10 h-10 text-gray-200 mx-auto mb-3"/>
+              <p className="text-sm font-semibold text-gray-400">{tab === 'waiting' ? 'No patients waiting' : tab === 'called' ? 'No active calls' : 'No completed visits yet'}</p>
+              {tab === 'waiting' && <button onClick={() => setShowRegister(true)} className="mt-3 text-xs text-blue-600 font-semibold underline">Register a patient</button>}
             </div>
-          </AnimatePresence>
-        )}
-
-        {tab !== 'queue' && (
-          <div className="text-center py-10 text-gray-400 text-xs">
-            {tab === 'registered' ? 'All registered patients will appear here.' : 'Visit history will appear here.'}
-          </div>
-        )}
+          ) : (
+            <div className="space-y-2">
+              {activeList.map((pt, i) => (
+                <QueueCard key={pt.id} patient={pt} pos={i}
+                  onCall={()  => callPatient(pt.id)}
+                  onSkip={()  => skipPatient(pt.id)}
+                  onDone={()  => donePatient(pt.id)}
+                  onView={()  => setDetail(pt)}/>
+              ))}
+            </div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Patient Detail */}
+      {/* Overlays */}
       <AnimatePresence>
-        {selectedPatient && (
-          <PatientDetailSheet patient={selectedPatient} onClose={() => setSelectedPatient(null)} />
-        )}
+        {detail && <PatientSheet patient={detail} onClose={() => setDetail(null)}/>}
       </AnimatePresence>
-
-      {/* Register Modal */}
       <AnimatePresence>
         {showRegister && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black z-40"
-              onClick={() => setShowRegister(false)}
-            />
-            <RegisterModal onClose={() => setShowRegister(false)} />
+            <motion.div initial={{ opacity:0 }} animate={{ opacity:0.5 }} exit={{ opacity:0 }}
+              className="fixed inset-0 bg-black z-40" onClick={() => setShowRegister(false)}/>
+            <RegisterModal onClose={() => setShowRegister(false)} onRegister={addPatient}/>
           </>
         )}
       </AnimatePresence>

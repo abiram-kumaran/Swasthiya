@@ -7,6 +7,8 @@ import PatientLayout from '@/pages/patient/layout';
 import AdminLayout from '@/pages/admin/layout';
 import FrontlineLayout from '@/pages/frontline/layout';
 import DriverLayout from '@/pages/driver/layout';
+import StockLayout from '@/pages/stock/layout';
+import DoctorLayout from '@/pages/doctor/layout';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient({
@@ -16,15 +18,19 @@ const queryClient = new QueryClient({
 function AppRouter() {
   return (
     <Switch>
-      <Route path="/"           component={Login}         />
+      <Route path="/"               component={Login}         />
       <Route path="/patient/:rest*" component={PatientLayout} />
-      <Route path="/patient"    component={PatientLayout} />
+      <Route path="/patient"        component={PatientLayout} />
       <Route path="/admin/:rest*"   component={AdminLayout}   />
-      <Route path="/admin"      component={AdminLayout}   />
+      <Route path="/admin"          component={AdminLayout}   />
       <Route path="/staff/:rest*"   component={FrontlineLayout} />
-      <Route path="/staff"      component={FrontlineLayout} />
+      <Route path="/staff"          component={FrontlineLayout} />
       <Route path="/driver/:rest*"  component={DriverLayout}  />
-      <Route path="/driver"     component={DriverLayout}  />
+      <Route path="/driver"         component={DriverLayout}  />
+      <Route path="/stock/:rest*"   component={StockLayout}   />
+      <Route path="/stock"          component={StockLayout}   />
+      <Route path="/doctor/:rest*"  component={DoctorLayout}  />
+      <Route path="/doctor"         component={DoctorLayout}  />
       <Route component={NotFound} />
     </Switch>
   );
