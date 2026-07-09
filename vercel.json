@@ -1,5 +1,4 @@
 {
-  "buildCommand": "pnpm -C artifacts/caregrid run build && rm -rf dist && cp -r artifacts/caregrid/dist/public dist",
   "rewrites": [
     {
       "source": "/(.*)",
