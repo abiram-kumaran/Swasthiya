@@ -1,0 +1,10 @@
+{
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "artifacts/caregrid/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
